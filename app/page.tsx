@@ -12,7 +12,7 @@ import { Footer } from '@/components/rentx/Footer'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-sparkle overflow-hidden">
+    <main className="min-h-screen bg-sparkle overflow-clip">
       <Navbar />
       <Hero />
       <ProblemSolution />

@@ -23,17 +23,24 @@ export function Footer() {
       {/* Main Footer */}
       <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 py-12 gap-6 max-w-7xl mx-auto">
         <div className="flex flex-col items-center md:items-start gap-4">
-          <div className="text-[32px] leading-[40px] font-bold text-on-surface tracking-[-0.01em]" style={{ fontFamily: 'var(--font-heading)' }}>RENTX</div>
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 flex-shrink-0 transition-transform duration-500 group-hover:rotate-[15deg]">
+              <img src="/rentx-coin.png" alt="RENTX Coin" className="relative w-full h-full object-contain drop-shadow-lg grayscale group-hover:grayscale-0 transition-all duration-500" />
+            </div>
+            <div className="font-bold text-[28px] md:text-[32px] leading-[40px] tracking-widest text-on-surface transition-colors duration-300 group-hover:text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
+              RENTX
+            </div>
+          </Link>
           <p className="text-sm text-on-surface-variant max-w-xs text-center md:text-left">
             The community-driven rental ecosystem built on Solana.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-8">
-          <Link href="#" className="text-on-surface-variant hover:text-secondary transition-colors text-sm">Privacy Policy</Link>
-          <Link href="#" className="text-on-surface-variant hover:text-secondary transition-colors text-sm">Terms of Service</Link>
-          <Link href="#" className="text-on-surface-variant hover:text-secondary transition-colors text-sm">Discord</Link>
-          <Link href="#" className="text-on-surface-variant hover:text-secondary transition-colors text-sm">Telegram</Link>
-          <Link href="#" className="text-on-surface-variant hover:text-secondary transition-colors text-sm">Documentation</Link>
+          <Link href="#mission" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Mission</Link>
+          <Link href="#services" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Services</Link>
+          <Link href="#tokenomics" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Tokenomics</Link>
+          <Link href="#roadmap" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">Roadmap</Link>
+          <Link href="#join" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">How to Join</Link>
         </div>
       </div>
 
