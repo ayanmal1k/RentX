@@ -127,6 +127,7 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-glow: glow 3s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 2s linear infinite;
 }
 
 @keyframes float {
@@ -137,6 +138,11 @@
 @keyframes glow {
   from { filter: drop-shadow(0 0 30px rgba(255, 184, 0, 0.2)); }
   to { filter: drop-shadow(0 0 60px rgba(255, 184, 0, 0.4)); }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
 @layer base {
