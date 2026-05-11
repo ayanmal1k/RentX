@@ -61,10 +61,10 @@ export function Navbar() {
                  Marketplace <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </span>
             </Link>
-            <button className="group relative bg-primary text-on-primary px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(0,163,255,0.4)] hover:shadow-[0_0_25px_rgba(0,163,255,0.6)] overflow-hidden">
+            <Link href="/buyrentx" className="group relative bg-primary text-on-primary px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(0,163,255,0.4)] hover:shadow-[0_0_25px_rgba(0,163,255,0.6)] overflow-hidden">
               <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300" />
               <span className="relative z-10 flex items-center gap-2">Buy RENTX <Wallet size={14} className="group-hover:rotate-12 transition-transform" /></span>
-            </button>
+            </Link>
           </div>
 
           {/* Mobile Hamburger */}
@@ -83,7 +83,7 @@ export function Navbar() {
               <Link href="/#services" onClick={() => setIsOpen(false)} className="text-on-surface hover:text-primary transition-colors py-2">Services</Link>
               <button onClick={() => { setIsOpen(false); handleDownload(); }} className="text-on-surface hover:text-primary transition-colors py-2 text-left">Whitepaper</button>
               <Link href="/marketplace" className="border border-primary/50 text-primary hover:bg-primary/10 w-full py-3 rounded-xl font-bold mt-2 text-center block">Marketplace</Link>
-              <button className="bg-primary-container text-on-primary-container w-full py-3 rounded-xl font-bold mt-2">Buy RENTX</button>
+              <Link href="/buyrentx" onClick={() => setIsOpen(false)} className="bg-primary-container text-on-primary-container w-full py-3 rounded-xl font-bold mt-2 text-center block">Buy RENTX</Link>
             </div>
           </div>
         )}
