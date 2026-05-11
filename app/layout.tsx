@@ -61,6 +61,8 @@ export const metadata: Metadata = {
   },
 }
 
+import { DynamicProvider } from '@/components/rentx/DynamicProvider'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -69,7 +71,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakarta.variable} ${manrope.variable} ${goodTimes.variable} ${jetbrainsMono.variable}`}>
       <body className="font-body antialiased">
-        {children}
+        <DynamicProvider>
+          {children}
+        </DynamicProvider>
         <Analytics />
       </body>
     </html>
