@@ -10,6 +10,7 @@ import {
   LayoutDashboard, Calendar, BookOpen, CreditCard, Wallet, UserCircle,
   Menu, LogOut, AlertCircle, ShoppingBag
 } from 'lucide-react';
+import CustomModal from '@/components/rentx/CustomModal';
 
 const CATEGORIES = ['DJ & Music', 'Photography', 'Design', 'Development', 'Logistics', 'Repair', 'Education', 'Wellness', 'Other'];
 
@@ -24,6 +25,18 @@ function ProviderServicesContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   // Form state
   const [title, setTitle] = useState('');
@@ -86,8 +99,20 @@ function ProviderServicesContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this listing?')) return;
-    await deleteService(id); await loadServices();
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Service',
+      message: 'Are you sure you want to delete this listing? This action cannot be undone.',
+      type: 'confirm',
+      onConfirm: async () => {
+        try {
+          await deleteService(id);
+          await loadServices();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
   };
 
   const addPackage = () => {
@@ -297,6 +322,14 @@ function ProviderServicesContent() {
           )}
         </main>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+      />
     </div>
   );
 }

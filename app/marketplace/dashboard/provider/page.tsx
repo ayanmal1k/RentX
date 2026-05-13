@@ -52,7 +52,7 @@ export default function ProviderDashboardPage() {
   const stats = {
     activeListings: services.filter(s => s.status === 'active').length,
     pendingBookings: bookings.filter(b => b.status === 'pending').length,
-    activeJobs: bookings.filter(b => b.status === 'active').length,
+    activeJobs: bookings.filter(b => b.status === 'active' || b.status === 'completed').length,
     totalEarnings: payments.reduce((acc, curr) => acc + (curr.status === 'released' ? curr.amount : 0), 0)
   };
 
@@ -152,7 +152,7 @@ export default function ProviderDashboardPage() {
                     <div className="p-2 bg-green-500/10 rounded-lg text-green-500 group-hover:scale-110 transition-transform"><CheckCircle className="w-5 h-5" /></div>
                   </div>
                   <div className="text-2xl font-bold">{stats.activeJobs}</div>
-                  <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-1">Active Jobs</div>
+                  <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-1">Ongoing Jobs</div>
                 </div>
 
                 <div className="glass-card rounded-2xl p-5 border border-white/10 relative overflow-hidden group">
@@ -171,7 +171,7 @@ export default function ProviderDashboardPage() {
             <div className="xl:col-span-2 space-y-6">
               <div className="glass-card rounded-3xl border border-white/5 overflow-hidden">
                 <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                  <h3 className="font-bold flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Active & Pending Bookings</h3>
+                  <h3 className="font-bold flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Active & Delivered Bookings</h3>
                   <Link href="/marketplace/dashboard/provider/bookings" className="text-[10px] text-primary font-bold hover:underline flex items-center gap-1">View All <ChevronRight className="w-3 h-3" /></Link>
                 </div>
                 <div className="divide-y divide-white/5">
@@ -194,14 +194,20 @@ export default function ProviderDashboardPage() {
                         </div>
                       </div>
                     ))
-                  ) : bookings.filter(b => b.status === 'pending' || b.status === 'active').length === 0 ? (
-                    <div className="p-10 text-center text-gray-500 text-sm italic">No active or pending bookings</div>
+                  ) : bookings.filter(b => b.status === 'pending' || b.status === 'active' || b.status === 'completed').length === 0 ? (
+                    <div className="p-10 text-center text-gray-500 text-sm italic">No active or delivered bookings</div>
                   ) : (
-                    bookings.filter(b => b.status === 'pending' || b.status === 'active').slice(0, 5).map((b) => (
+                    bookings.filter(b => b.status === 'pending' || b.status === 'active' || b.status === 'completed').slice(0, 5).map((b) => (
                       <div key={b.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${b.status === 'active' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
-                            {b.status === 'active' ? <Clock className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            b.status === 'active' ? 'bg-blue-500/10 text-blue-500' : 
+                            b.status === 'completed' ? 'bg-purple-500/10 text-purple-500' : 
+                            'bg-yellow-500/10 text-yellow-500'
+                          }`}>
+                            {b.status === 'active' ? <Clock className="w-5 h-5" /> : 
+                             b.status === 'completed' ? <CheckCircle className="w-5 h-5" /> : 
+                             <Bell className="w-5 h-5" />}
                           </div>
                           <div>
                             <div className="text-sm font-bold">{b.clientName} ordered <span className="text-primary">{b.packageName}</span></div>
@@ -215,7 +221,11 @@ export default function ProviderDashboardPage() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <div className="text-sm font-bold text-white">{b.packagePrice} RENTX</div>
-                            <div className={`text-[9px] font-bold uppercase ${b.status === 'active' ? 'text-blue-500' : 'text-yellow-500'}`}>{b.status}</div>
+                            <div className={`text-[9px] font-bold uppercase ${
+                              b.status === 'active' ? 'text-blue-500' : 
+                              b.status === 'completed' ? 'text-purple-500' : 
+                              'text-yellow-500'
+                            }`}>{b.status === 'completed' ? 'delivered' : b.status}</div>
                           </div>
                           <Link href="/marketplace/dashboard/provider/bookings" className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></Link>
                         </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, X, Send, Loader2 } from 'lucide-react';
 import { createReview } from '@/lib/firestore-helpers';
+import CustomModal from '@/components/rentx/CustomModal';
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -25,6 +26,18 @@ export default function ReviewModal({ isOpen, onClose, booking, onSuccess }: Rev
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,12 +58,18 @@ export default function ReviewModal({ isOpen, onClose, booking, onSuccess }: Rev
       onClose();
     } catch (err) {
       console.error(err);
-      alert('Failed to submit review. Please try again.');
+      setModalConfig({
+        isOpen: true,
+        title: 'Submission Error',
+        message: 'Failed to submit review. Please try again.',
+        type: 'error'
+      });
     }
     setLoading(false);
   };
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -157,5 +176,14 @@ export default function ReviewModal({ isOpen, onClose, booking, onSuccess }: Rev
         </div>
       )}
     </AnimatePresence>
+    <CustomModal
+      isOpen={modalConfig.isOpen}
+      title={modalConfig.title}
+      message={modalConfig.message}
+      type={modalConfig.type}
+      onConfirm={modalConfig.onConfirm}
+      onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+    />
+    </>
   );
 }

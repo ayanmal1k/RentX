@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import NotificationBell from '@/components/rentx/NotificationBell';
 import { motion, AnimatePresence } from 'framer-motion';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function AdminWithdrawalsPage() {
   const { user, userProfile, logout } = useAuth();
@@ -39,6 +40,19 @@ export default function AdminWithdrawalsPage() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   const NAV_ITEMS = [
     { label: 'Overview', icon: BarChart3, href: '/marketplace/admin' },
@@ -73,29 +87,44 @@ export default function AdminWithdrawalsPage() {
   const handleProcessWithdrawal = async (withdrawal: Withdrawal) => {
     if (!withdrawal.id) return;
     
-    const confirmMsg = `Confirm payout of ${withdrawal.amount} RENTX to ${withdrawal.solanaWallet}?\n\nThis should only be done AFTER you have executed the transaction from the treasury wallet.`;
-    if (!confirm(confirmMsg)) return;
+    setModalConfig({
+      isOpen: true,
+      title: 'Confirm Payout',
+      message: `Confirm payout of ${withdrawal.amount} RENTX to ${withdrawal.solanaWallet}?\n\nThis should only be done AFTER you have executed the transaction from the treasury wallet.`,
+      type: 'confirm',
+      onConfirm: async () => {
+        setProcessingId(withdrawal.id!);
+        try {
+          await updateWithdrawalStatus(withdrawal.id!, 'completed');
+          
+          // Notify Provider
+          await createNotification({
+            userId: withdrawal.providerId,
+            type: 'withdrawal',
+            title: 'Withdrawal Processed!',
+            message: `Your withdrawal of ${withdrawal.amount} RENTX has been processed and sent to your wallet.`,
+            link: '/marketplace/dashboard/provider/wallet',
+          });
 
-    setProcessingId(withdrawal.id);
-    try {
-      await updateWithdrawalStatus(withdrawal.id, 'completed');
-      
-      // Notify Provider
-      await createNotification({
-        userId: withdrawal.providerId,
-        type: 'withdrawal',
-        title: 'Withdrawal Processed!',
-        message: `Your withdrawal of ${withdrawal.amount} RENTX has been processed and sent to your wallet.`,
-        link: '/marketplace/dashboard/provider/wallet',
-      });
-
-      alert('Withdrawal marked as COMPLETED.');
-      fetchWithdrawals();
-    } catch (err) {
-      console.error(err);
-      alert('Error processing withdrawal.');
-    }
-    setProcessingId(null);
+          setModalConfig({
+            isOpen: true,
+            title: 'Success',
+            message: 'Withdrawal marked as COMPLETED.',
+            type: 'info'
+          });
+          fetchWithdrawals();
+        } catch (err) {
+          console.error(err);
+          setModalConfig({
+            isOpen: true,
+            title: 'Error',
+            message: 'Error processing withdrawal.',
+            type: 'error'
+          });
+        }
+        setProcessingId(null);
+      }
+    });
   };
 
   if (loading) {
@@ -268,6 +297,14 @@ export default function AdminWithdrawalsPage() {
           </div>
         </main>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 }

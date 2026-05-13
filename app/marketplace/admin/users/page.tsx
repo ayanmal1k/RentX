@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationBell from '@/components/rentx/NotificationBell';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function AdminUsersPage() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
@@ -22,6 +23,19 @@ export default function AdminUsersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
+
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   useEffect(() => {
     if (!authLoading) {
@@ -45,13 +59,32 @@ export default function AdminUsersPage() {
   };
 
   const handleRoleUpdate = async (uid: string, role: UserRole) => {
-    if (!confirm(`Change user role to ${role}?`)) return;
-    try {
-      await updateUser(uid, { role });
-      await loadUsers();
-    } catch (err) {
-      console.error(err);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: 'Update User Role',
+      message: `Are you sure you want to change this user's role to ${role}?`,
+      type: 'confirm',
+      onConfirm: async () => {
+        try {
+          await updateUser(uid, { role });
+          await loadUsers();
+          setModalConfig({
+            isOpen: true,
+            title: 'Success',
+            message: 'User role updated successfully.',
+            type: 'info'
+          });
+        } catch (err) {
+          console.error(err);
+          setModalConfig({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to update user role.',
+            type: 'error'
+          });
+        }
+      }
+    });
   };
 
   const filteredUsers = users.filter(u => {
@@ -191,6 +224,14 @@ export default function AdminUsersPage() {
           </div>
         </main>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 }

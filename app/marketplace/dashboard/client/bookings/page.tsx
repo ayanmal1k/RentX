@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getClientBookings, releasePayment, Booking } from '@/lib/firestore-helpers';
+import { getClientBookings, releasePayment, Booking, getBookingReview, Review } from '@/lib/firestore-helpers';
 import {
   ShoppingBag, Clock, CheckCircle, XCircle, AlertCircle, ChevronRight,
   LayoutDashboard, Heart, UserCircle, Menu, LogOut, MessageSquare,
@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { formatDate } from '@/lib/utils';
 import ReviewModal from '@/components/rentx/ReviewModal';
 import NotificationBell from '@/components/rentx/NotificationBell';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function ClientBookingsPage() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
@@ -21,12 +22,27 @@ export default function ClientBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed' | 'confirmed' | 'cancelled'>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<Record<string, Review>>({});
 
   // Review Modal State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewBooking, setReviewBooking] = useState<any>(null);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/marketplace/auth');
@@ -42,6 +58,17 @@ export default function ClientBookingsPage() {
     try {
       const b = await getClientBookings(user.uid);
       setBookings(b);
+      
+      // Fetch reviews for reviewed bookings
+      const reviewedBookings = b.filter(booking => booking.isReviewed);
+      const reviewsMap: Record<string, Review> = {};
+      for (const booking of reviewedBookings) {
+        if (booking.id) {
+          const r = await getBookingReview(booking.id);
+          if (r) reviewsMap[booking.id] = r;
+        }
+      }
+      setReviews(reviewsMap);
     } catch (err) {
       console.error(err);
     }
@@ -50,30 +77,42 @@ export default function ClientBookingsPage() {
 
   const handleConfirmCompletion = async (booking: Booking) => {
     if (!booking.id) return;
-    if (!confirm('Are you sure the service is complete? This will release the RENTX tokens from escrow to the provider.')) return;
+    
+    setModalConfig({
+      isOpen: true,
+      title: 'Confirm Completion',
+      message: 'Are you sure the service is complete? This will release the RENTX tokens from escrow to the provider. This action is irreversible.',
+      type: 'confirm',
+      onConfirm: async () => {
+        setProcessingId(booking.id!);
+        try {
+          await releasePayment(booking.id!);
+          await loadBookings();
 
-    setProcessingId(booking.id);
-    try {
-      await releasePayment(booking.id);
-      await loadBookings();
+          // Open review modal after successful release
+          setReviewBooking({
+            id: booking.id,
+            serviceId: booking.serviceId,
+            serviceTitle: booking.serviceTitle,
+            providerId: booking.providerId,
+            providerName: booking.providerName,
+            clientId: user!.uid,
+            clientName: userProfile?.displayName || user!.email || 'Client'
+          });
+          setIsReviewModalOpen(true);
 
-      // Open review modal after successful release
-      setReviewBooking({
-        id: booking.id,
-        serviceId: booking.serviceId,
-        serviceTitle: booking.serviceTitle,
-        providerId: booking.providerId,
-        providerName: booking.providerName,
-        clientId: user!.uid,
-        clientName: userProfile?.displayName || user!.email || 'Client'
-      });
-      setIsReviewModalOpen(true);
-
-    } catch (err) {
-      console.error(err);
-      alert('Failed to release payment.');
-    }
-    setProcessingId(null);
+        } catch (err) {
+          console.error(err);
+          setModalConfig({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to release payment. Please try again.',
+            type: 'error'
+          });
+        }
+        setProcessingId(null);
+      }
+    });
   };
 
   const openReviewModal = (booking: Booking) => {
@@ -107,7 +146,8 @@ export default function ClientBookingsPage() {
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       case 'active': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'completed': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      case 'confirmed': return 'bg-green-500/10 text-green-500 border-green-500/20';
       case 'cancelled': return 'bg-red-500/10 text-red-500 border-red-500/20';
       default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
     }
@@ -157,7 +197,8 @@ export default function ClientBookingsPage() {
               <option value="all">All Orders</option>
               <option value="pending">Pending Confirmation</option>
               <option value="active">In Progress</option>
-              <option value="completed">Completed</option>
+              <option value="completed">Delivered (Pending Completion)</option>
+              <option value="confirmed">Confirmed & Released</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
@@ -185,7 +226,9 @@ export default function ClientBookingsPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-bold text-lg">{b.serviceTitle}</h3>
-                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded border ${getStatusStyle(b.status)}`}>{b.status}</span>
+                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded border ${getStatusStyle(b.status)}`}>
+                            {b.status === 'completed' ? 'Delivered' : b.status === 'confirmed' ? 'Completed' : b.status}
+                          </span>
                         </div>
                         <p className="text-primary text-xs font-bold uppercase tracking-wider mb-2">{b.packageName} Package • By {b.providerName}</p>
                         <div className="flex flex-wrap gap-4 text-[10px] text-gray-500 font-medium">
@@ -202,16 +245,16 @@ export default function ClientBookingsPage() {
                       </div>
 
                       <div className="flex gap-2 w-full md:w-auto">
-                        {b.status === 'active' && (
+                        {b.status === 'completed' && (
                           <button
                             onClick={() => handleConfirmCompletion(b)}
                             disabled={processingId === b.id}
                             className="flex-1 md:flex-none bg-primary text-black px-4 py-2.5 rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-primary/20 transition-all flex items-center justify-center gap-2"
                           >
-                            {processingId === b.id ? <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><CheckCircle className="w-3.5 h-3.5" /> Confirm & Release Funds</>}
+                            {processingId === b.id ? <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><CheckCircle className="w-3.5 h-3.5" /> Mark as Completed</>}
                           </button>
                         )}
-                        {b.status === 'completed' && (
+                        {b.status === 'confirmed' && !b.isReviewed && (
                           <button
                             onClick={() => openReviewModal(b)}
                             className="flex-1 md:flex-none bg-white/5 text-primary border border-primary/20 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
@@ -219,17 +262,42 @@ export default function ClientBookingsPage() {
                             <Star className="w-3.5 h-3.5" /> Leave Review
                           </button>
                         )}
+                        {b.isReviewed && reviews[b.id!] && (
+                          <div className="flex-1 md:flex-none flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-500/5 border border-green-500/10">
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} className={`w-3 h-3 ${i < reviews[b.id!].rating ? 'text-yellow-400 fill-yellow-400' : 'text-white/10'}`} />
+                              ))}
+                            </div>
+                            <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Review Locked</span>
+                          </div>
+                        )}
                         <button className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/5 transition-all"><MessageSquare className="w-4 h-4" /></button>
                       </div>
                     </div>
                   </div>
 
-                  {b.status === 'active' && (
+                  {b.status === 'completed' && (
                     <div className="mt-6 p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-xs text-gray-300 leading-relaxed font-medium">This service is currently in progress. Only confirm completion once you have received the service or deliverables. Confirming will transfer the tokens from escrow to the provider's wallet.</p>
+                        <p className="text-xs text-gray-300 leading-relaxed font-medium">The provider has delivered the service. Please review the delivery and click "Mark as Completed" to release the funds from escrow. This action is irreversible.</p>
                       </div>
+                    </div>
+                  )}
+
+                  {b.isReviewed && reviews[b.id!] && (
+                    <div className="mt-6 p-5 bg-white/[0.02] border border-white/5 rounded-2xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-[10px] font-bold">
+                            {userProfile?.displayName?.charAt(0) || 'U'}
+                          </div>
+                          <span className="text-xs font-bold text-white/90">Your Review</span>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-medium">Locked • Non-editable</span>
+                      </div>
+                      <p className="text-xs text-gray-400 italic leading-relaxed">"{reviews[b.id!].comment}"</p>
                     </div>
                   )}
                 </div>
@@ -247,6 +315,15 @@ export default function ClientBookingsPage() {
           onSuccess={loadBookings}
         />
       )}
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+      />
     </div>
   );
 }

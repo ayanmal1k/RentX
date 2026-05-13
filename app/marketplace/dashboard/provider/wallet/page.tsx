@@ -11,6 +11,10 @@ import {
   CreditCard, DollarSign, History, ChevronRight, ShoppingBag
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { isSolanaWallet } from '@dynamic-labs/solana';
+import { toast } from 'sonner';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function ProviderWalletPage() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
@@ -20,6 +24,24 @@ export default function ProviderWalletPage() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [viewAllPayments, setViewAllPayments] = useState(false);
+  const [viewAllWithdrawals, setViewAllWithdrawals] = useState(false);
+  
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+  
+  const { primaryWallet, handleLogOut, setShowAuthFlow } = useDynamicContext();
 
   // Stats
   const [stats, setStats] = useState({
@@ -83,27 +105,38 @@ export default function ProviderWalletPage() {
 
   const handleWithdrawalRequest = async () => {
     if (!user || stats.availableBalance <= 0) return;
-    if (!userProfile?.solanaWallet) {
-      alert('Please connect your Solana wallet in Profile first.');
+    
+    if (!primaryWallet || !isSolanaWallet(primaryWallet)) {
+      toast.error('Please connect your Solana wallet to withdraw');
+      setShowAuthFlow(true);
       return;
     }
 
-    if (!confirm(`Request withdrawal of ${stats.availableBalance} RENTX to ${userProfile.solanaWallet}?`)) return;
-
-    setWithdrawing(true);
-    try {
-      await createWithdrawal({
-        providerId: user.uid,
-        amount: stats.availableBalance,
-        solanaWallet: userProfile.solanaWallet,
-        status: 'pending'
-      });
-      alert('Withdrawal request submitted! It will be processed shortly.');
-      await loadData();
-    } catch (err) {
-      console.error(err);
-    }
-    setWithdrawing(false);
+    const walletAddress = primaryWallet.address;
+    
+    setModalConfig({
+      isOpen: true,
+      title: 'Confirm Withdrawal',
+      message: `Are you sure you want to request a withdrawal of ${stats.availableBalance} RENTX to your wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-6)})?`,
+      type: 'confirm',
+      onConfirm: async () => {
+        setWithdrawing(true);
+        try {
+          await createWithdrawal({
+            providerId: user.uid,
+            amount: stats.availableBalance,
+            solanaWallet: walletAddress,
+            status: 'pending'
+          });
+          toast.success('Withdrawal request submitted!');
+          await loadData();
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to submit withdrawal request');
+        }
+        setWithdrawing(false);
+      }
+    });
   };
 
   const handleSwitchToBuying = () => {
@@ -157,7 +190,29 @@ export default function ProviderWalletPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+            {primaryWallet ? (
+              <div className="flex items-center gap-2 bg-white/5 pl-3 pr-1 py-1 rounded-full border border-white/10">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                  {primaryWallet.address.slice(0, 4)}...{primaryWallet.address.slice(-4)}
+                </span>
+                <button 
+                  onClick={() => handleLogOut()}
+                  className="p-1.5 hover:bg-white/10 rounded-full text-gray-500 hover:text-red-400 transition-colors"
+                  title="Disconnect Wallet"
+                >
+                  <LogOut className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setShowAuthFlow(true)}
+                className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary/20 transition-all text-[10px] font-bold uppercase tracking-widest"
+              >
+                <Wallet className="w-3 h-3" /> Connect Wallet
+              </button>
+            )}
+            <div className="hidden sm:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Solana Mainnet-beta</span>
             </div>
@@ -217,13 +272,18 @@ export default function ProviderWalletPage() {
             <div className="glass-card rounded-3xl border border-white/5 overflow-hidden">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <h3 className="font-bold flex items-center gap-2"><CreditCard className="w-4 h-4 text-primary" /> Recent Payments</h3>
-                <Link href="#" className="text-[10px] text-primary font-bold hover:underline">View All</Link>
+                <button 
+                  onClick={() => setViewAllPayments(!viewAllPayments)}
+                  className="text-[10px] text-primary font-bold hover:underline"
+                >
+                  {viewAllPayments ? 'Show Less' : 'View All'}
+                </button>
               </div>
               <div className="divide-y divide-white/5">
                 {payments.length === 0 ? (
                   <div className="p-10 text-center text-gray-500 text-sm">No payment history found</div>
                 ) : (
-                  payments.slice(0, 5).map((p) => (
+                  (viewAllPayments ? payments : payments.slice(0, 5)).map((p) => (
                     <div key={p.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${p.status === 'released' ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
@@ -248,26 +308,43 @@ export default function ProviderWalletPage() {
             <div className="glass-card rounded-3xl border border-white/5 overflow-hidden">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <h3 className="font-bold flex items-center gap-2"><ArrowUpRight className="w-4 h-4 text-error" /> Withdrawal History</h3>
-                <Link href="#" className="text-[10px] text-primary font-bold hover:underline">View All</Link>
+                <button 
+                  onClick={() => setViewAllWithdrawals(!viewAllWithdrawals)}
+                  className="text-[10px] text-primary font-bold hover:underline"
+                >
+                  {viewAllWithdrawals ? 'Show Less' : 'View All'}
+                </button>
               </div>
               <div className="divide-y divide-white/5">
                 {withdrawals.length === 0 ? (
                   <div className="p-10 text-center text-gray-500 text-sm">No withdrawal history found</div>
                 ) : (
-                  withdrawals.slice(0, 5).map((w) => (
+                  (viewAllWithdrawals ? withdrawals : withdrawals.slice(0, 5)).map((w) => (
                     <div key={w.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${w.status === 'completed' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
                           <ArrowUpRight className="w-4 h-4" />
                         </div>
                         <div>
-                          <div className="text-sm font-bold truncate max-w-[150px]">{w.solanaWallet}</div>
-                          <div className="text-[10px] text-gray-500">{formatDate(w.createdAt, 'MMM dd, yyyy')}</div>
+                          <div className="text-sm font-bold truncate max-w-[150px]">{w.solanaWallet.slice(0, 8)}...{w.solanaWallet.slice(-8)}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500">{formatDate(w.createdAt, 'MMM dd, yyyy')}</span>
+                            {w.transactionSignature && (
+                              <a 
+                                href={`https://solscan.io/tx/${w.transactionSignature}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                              >
+                                <ArrowUpRight className="w-2.5 h-2.5" /> Solscan
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-bold text-white">-{w.amount} RENTX</div>
-                        <div className={`text-[10px] font-bold uppercase ${w.status === 'completed' ? 'text-blue-500' : 'text-green-500'}`}>{w.status}</div>
+                        <div className={`text-[10px] font-bold uppercase ${w.status === 'completed' ? 'text-blue-500' : 'text-yellow-500'}`}>{w.status}</div>
                       </div>
                     </div>
                   ))
@@ -277,6 +354,15 @@ export default function ProviderWalletPage() {
           </div>
         </main>
       </div>
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+      />
     </div>
   );
 }

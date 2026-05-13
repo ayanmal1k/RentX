@@ -10,6 +10,7 @@ import {
   Search, Filter, ChevronRight, BarChart3, Users, BookOpen,
   CreditCard, Settings, LogOut, Menu, ExternalLink, Eye
 } from 'lucide-react';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function AdminServicesPage() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
@@ -19,6 +20,19 @@ export default function AdminServicesPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'pending' | 'suspended'>('all');
+
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   useEffect(() => {
     if (!authLoading) {
@@ -42,13 +56,32 @@ export default function AdminServicesPage() {
   };
 
   const handleStatusUpdate = async (id: string, status: ServiceListing['status']) => {
-    if (!confirm(`Mark this service as ${status}?`)) return;
-    try {
-      await updateService(id, { status });
-      await loadServices();
-    } catch (err) {
-      console.error(err);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: 'Update Service Status',
+      message: `Are you sure you want to mark this service as ${status}?`,
+      type: 'confirm',
+      onConfirm: async () => {
+        try {
+          await updateService(id, { status });
+          await loadServices();
+          setModalConfig({
+            isOpen: true,
+            title: 'Success',
+            message: `Service status updated to ${status}.`,
+            type: 'info'
+          });
+        } catch (err) {
+          console.error(err);
+          setModalConfig({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to update service status.',
+            type: 'error'
+          });
+        }
+      }
+    });
   };
 
   const filteredServices = services.filter(s => {
@@ -188,6 +221,14 @@ export default function AdminServicesPage() {
           </div>
         </main>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 }

@@ -11,12 +11,26 @@ import {
   ShieldCheck, AlertCircle, ExternalLink, Star, ShoppingBag
 } from 'lucide-react';
 import { format } from 'date-fns';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function ProviderProfilePage() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   // Form state
   const [displayName, setDisplayName] = useState('');
@@ -50,10 +64,20 @@ export default function ProviderProfilePage() {
         country,
         city
       });
-      alert('Profile updated successfully!');
+      setModalConfig({
+        isOpen: true,
+        title: 'Profile Updated',
+        message: 'Your profile has been successfully updated.',
+        type: 'info'
+      });
     } catch (err) {
       console.error(err);
-      alert('Failed to update profile.');
+      setModalConfig({
+        isOpen: true,
+        title: 'Update Failed',
+        message: 'Failed to update your profile. Please try again.',
+        type: 'error'
+      });
     }
     setSaving(false);
   };
@@ -216,6 +240,14 @@ export default function ProviderProfilePage() {
           </div>
         </main>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 }

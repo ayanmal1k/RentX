@@ -13,6 +13,7 @@ import {
 import { format } from 'date-fns';
 import { formatDate } from '@/lib/utils';
 import NotificationBell from '@/components/rentx/NotificationBell';
+import CustomModal from '@/components/rentx/CustomModal';
 
 export default function ProviderBookingsPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -20,7 +21,19 @@ export default function ProviderBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed' | 'confirmed' | 'cancelled'>('all');
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/marketplace/auth');
@@ -43,13 +56,22 @@ export default function ProviderBookingsPage() {
   };
 
   const handleStatusUpdate = async (id: string, status: Booking['status']) => {
-    if (!confirm(`Mark this booking as ${status}?`)) return;
-    try {
-      await updateBookingStatus(id, status);
-      await loadBookings();
-    } catch (err) {
-      console.error(err);
-    }
+    const actionText = status === 'active' ? 'accept' : status === 'completed' ? 'complete' : status === 'cancelled' ? 'cancel' : status;
+    
+    setModalConfig({
+      isOpen: true,
+      title: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Booking`,
+      message: `Are you sure you want to ${actionText} this booking?`,
+      type: 'confirm',
+      onConfirm: async () => {
+        try {
+          await updateBookingStatus(id, status);
+          await loadBookings();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
   };
 
   const NAV_ITEMS = [
@@ -66,7 +88,8 @@ export default function ProviderBookingsPage() {
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       case 'active': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'completed': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      case 'confirmed': return 'bg-green-500/10 text-green-500 border-green-500/20';
       case 'cancelled': return 'bg-red-500/10 text-red-500 border-red-500/20';
       default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
     }
@@ -116,7 +139,8 @@ export default function ProviderBookingsPage() {
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
               <option value="active">Active</option>
-              <option value="completed">Completed</option>
+              <option value="completed">Delivered</option>
+              <option value="confirmed">Accepted</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
@@ -143,7 +167,9 @@ export default function ProviderBookingsPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-bold">{b.clientName}</h3>
-                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${getStatusStyle(b.status)}`}>{b.status}</span>
+                           <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${getStatusStyle(b.status)}`}>
+                             {b.status === 'completed' ? 'Delivered' : b.status === 'confirmed' ? 'Accepted' : b.status}
+                           </span>
                         </div>
                         <p className="text-gray-400 text-sm font-medium mb-2">{b.serviceTitle} • <span className="text-primary">{b.packageName}</span></p>
                         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
@@ -186,6 +212,14 @@ export default function ProviderBookingsPage() {
           )}
         </main>
       </div>
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+      />
     </div>
   );
 }

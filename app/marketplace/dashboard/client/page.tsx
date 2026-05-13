@@ -39,9 +39,9 @@ export default function ClientDashboardPage() {
   };
 
   const stats = {
-    activeOrders: bookings.filter(b => b.status === 'active' || b.status === 'pending').length,
-    completedOrders: bookings.filter(b => b.status === 'completed').length,
-    totalSpent: bookings.filter(b => b.status === 'completed' || b.status === 'active').reduce((acc, b) => acc + b.packagePrice, 0)
+    activeOrders: bookings.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'completed').length,
+    completedOrders: bookings.filter(b => b.status === 'confirmed').length,
+    totalSpent: bookings.filter(b => b.status === 'confirmed' || b.status === 'completed' || b.status === 'active' || b.status === 'pending').reduce((acc, b) => acc + b.packagePrice, 0)
   };
 
   const handleSwitchToProviding = () => {
@@ -139,14 +139,14 @@ export default function ClientDashboardPage() {
               </div>
 
               <div className="space-y-3">
-                {bookings.filter(b => b.status === 'active' || b.status === 'pending').length === 0 ? (
+                {bookings.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'completed').length === 0 ? (
                   <div className="glass-card p-12 rounded-3xl border border-white/5 text-center">
                     <ShoppingBag className="w-12 h-12 text-white/5 mx-auto mb-4" />
                     <p className="text-gray-500 text-sm italic">You don't have any active orders right now.</p>
                     <Link href="/marketplace" className="inline-block mt-4 text-primary text-xs font-bold hover:underline">Start browsing marketplace</Link>
                   </div>
                 ) : (
-                  bookings.filter(b => b.status === 'active' || b.status === 'pending').slice(0, 3).map((b) => (
+                  bookings.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'completed').slice(0, 3).map((b) => (
                     <div key={b.id} className="glass-card p-4 rounded-2xl border border-white/10 flex items-center justify-between group hover:border-white/20 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
@@ -166,7 +166,9 @@ export default function ClientDashboardPage() {
                       <div className="flex items-center gap-6">
                         <div className="text-right">
                           <div className="text-sm font-bold text-white">{b.packagePrice} RENTX</div>
-                          <div className={`text-[9px] font-bold uppercase ${b.status === 'active' ? 'text-blue-500' : 'text-yellow-500'}`}>{b.status}</div>
+                          <div className={`text-[9px] font-bold uppercase ${b.status === 'active' ? 'text-blue-500' : b.status === 'completed' ? 'text-purple-500' : 'text-yellow-500'}`}>
+                            {b.status === 'completed' ? 'Delivered' : b.status}
+                          </div>
                         </div>
                         <Link href="/marketplace/dashboard/client/bookings" className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></Link>
                       </div>

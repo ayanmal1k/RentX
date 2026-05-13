@@ -19,7 +19,7 @@ import {
   increment,
   getDocFromCache,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 
 // ============================================================
 // TYPE DEFINITIONS — Database Schema
@@ -107,6 +107,8 @@ export interface Booking {
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
   clientConfirmed: boolean;
   providerConfirmed: boolean;
+  buyerConfirmed?: boolean;
+  isReviewed?: boolean;
   // Contact (revealed after booking)
   providerContact?: {
     email: string;
@@ -365,12 +367,19 @@ export async function getProviderPayments(providerId: string): Promise<Payment[]
 }
 
 export async function releasePayment(bookingId: string) {
-  // 1. Update Booking
+  // 1. Update Booking to confirmed (final stage)
   const bookingRef = doc(db, 'bookings', bookingId);
-  await updateDoc(bookingRef, { status: 'completed', updatedAt: serverTimestamp() });
+  await updateDoc(bookingRef, { status: 'confirmed', buyerConfirmed: true, updatedAt: serverTimestamp() });
 
   // 2. Find and update Payment
-  const q = query(collection(db, 'payments'), where('bookingId', '==', bookingId));
+  const currentUserId = auth.currentUser?.uid;
+  if (!currentUserId) throw new Error('User not authenticated');
+
+  const q = query(
+    collection(db, 'payments'), 
+    where('bookingId', '==', bookingId),
+    where('clientId', '==', currentUserId)
+  );
   const snap = await getDocs(q);
   if (!snap.empty) {
     const paymentDoc = snap.docs[0];
@@ -439,6 +448,15 @@ export async function createReview(data: Partial<Review>): Promise<string> {
     createdAt: serverTimestamp(),
   });
 
+  // Mark booking as reviewed
+  if (data.bookingId) {
+    const bookingRef = doc(db, 'bookings', data.bookingId);
+    await updateDoc(bookingRef, {
+      isReviewed: true,
+      updatedAt: serverTimestamp()
+    });
+  }
+
   // Aggregate ratings on the service listing
   if (data.serviceId && data.rating) {
     const serviceRef = doc(db, 'services', data.serviceId);
@@ -495,6 +513,12 @@ export async function getServiceReviews(serviceId: string): Promise<Review[]> {
   const q = query(collection(db, 'reviews'), where('serviceId', '==', serviceId), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Review));
+}
+
+export async function getBookingReview(bookingId: string): Promise<Review | null> {
+  const q = query(collection(db, 'reviews'), where('bookingId', '==', bookingId), limit(1));
+  const snap = await getDocs(q);
+  return !snap.empty ? ({ ...snap.docs[0].data(), id: snap.docs[0].id } as Review) : null;
 }
 
 // ============================================================
