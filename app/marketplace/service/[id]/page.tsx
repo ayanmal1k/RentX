@@ -13,9 +13,7 @@ import {
   Sparkles, User, ChevronRight, Zap, Globe, Package, AlertCircle, Wallet
 } from 'lucide-react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
-import { isSolanaWallet } from '@dynamic-labs/solana';
-import { createRentxTransferTransaction, connection } from '@/lib/solana-pay';
-import { PublicKey } from '@solana/web3.js';
+import { SOLANA_TOKEN_MINT, SOLANA_TOKEN_DECIMALS, TREASURY_WALLET_ADDRESS } from '@/lib/solana-config';
 import { toast } from 'sonner';
 
 // Demo data fallback
@@ -78,7 +76,7 @@ export default function ServiceDetailPage() {
     load();
   }, [serviceId]);
 
-  const { primaryWallet } = useDynamicContext();
+  const { primaryWallet, handleLogOut, setShowAuthFlow } = useDynamicContext();
 
   const handleBooking = async () => {
     if (!user || !userProfile || !service) return;
@@ -87,8 +85,8 @@ export default function ServiceDetailPage() {
       return;
     }
 
-    if (!primaryWallet || !isSolanaWallet(primaryWallet)) {
-      toast.error('Please connect your Solana wallet to proceed');
+    if (!primaryWallet) {
+      toast.error('Please connect your wallet to proceed');
       return;
     }
 
@@ -97,28 +95,19 @@ export default function ServiceDetailPage() {
       const pkg = service.packages?.[selectedPackage];
       const amount = pkg?.price || 0;
 
-      // 1. Create and Sign Solana Transaction
-      toast.loading('Preparing transaction...', { id: 'booking-tx' });
+      // 1. Process Solana Transaction
+      toast.loading('Processing payment...', { id: 'booking-tx' });
 
-      const signer = await primaryWallet.connector.getSigner();
-      if (!signer) throw new Error('Could not get wallet signer');
-
-      const publicKey = new PublicKey(primaryWallet.address);
-      const transaction = await createRentxTransferTransaction(publicKey, amount);
-
-      toast.loading('Awaiting signature...', { id: 'booking-tx' });
-
-      // Sign and send via Dynamic/Wallet
-      const signature = await primaryWallet.connector.sendTransaction(transaction);
-
-      toast.loading('Confirming transaction...', { id: 'booking-tx' });
-
-      // Wait for confirmation
-      const latestBlockhash = await connection.getLatestBlockhash();
-      await connection.confirmTransaction({
-        signature,
-        ...latestBlockhash
+      const hash = await primaryWallet.sendBalance({
+        amount: amount.toString(),
+        toAddress: TREASURY_WALLET_ADDRESS,
+        token: {
+          address: SOLANA_TOKEN_MINT,
+          decimals: SOLANA_TOKEN_DECIMALS
+        }
       });
+
+      if (!hash) throw new Error('Transaction failed or was cancelled');
 
       toast.success('Payment successful!', { id: 'booking-tx' });
 
@@ -147,7 +136,7 @@ export default function ServiceDetailPage() {
         amount: amount,
         platformFee: amount * 0.05,
         providerAmount: amount * 0.95,
-        transactionSignature: signature,
+        transactionSignature: hash,
         status: 'held', // Set to held as funds are in treasury
       });
 
@@ -305,10 +294,38 @@ export default function ServiceDetailPage() {
                         className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-on-surface-variant/50 text-sm focus:outline-none focus:border-primary/50 transition-all resize-none" />
                     </div>
                     {user ? (
-                      <button onClick={handleBooking} disabled={!bookingDate || bookingLoading}
-                        className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        {bookingLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Zap className="w-4 h-4" /> Pay {pkg?.price} RENTX & Book</>}
-                      </button>
+                      <div className="space-y-4">
+                        {!primaryWallet ? (
+                          <button 
+                            onClick={() => setShowAuthFlow(true)}
+                            className="w-full bg-primary text-on-primary py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all"
+                          >
+                            <Wallet className="w-4 h-4" /> Connect Wallet to Book
+                          </button>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-white/5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Connected</span>
+                                <span className="text-xs font-mono text-white/70">
+                                  {primaryWallet.address.slice(0, 4)}...{primaryWallet.address.slice(-4)}
+                                </span>
+                              </div>
+                              <button 
+                                onClick={() => handleLogOut()}
+                                className="text-[10px] font-black text-error hover:text-red-400 transition-colors uppercase tracking-widest"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                            <button onClick={handleBooking} disabled={!bookingDate || bookingLoading}
+                              className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                              {bookingLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Zap className="w-4 h-4" /> Pay {pkg?.price} RENTX & Book</>}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <Link href="/marketplace/auth" className="w-full bg-gradient-to-r from-primary to-primary-container text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all">
                         Sign In to Book
