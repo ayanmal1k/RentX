@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { getClientBookings, Booking } from '@/lib/firestore-helpers';
 import { ShieldCheck, LayoutDashboard, ShoppingBag, Wallet, UserCircle, Menu, LogOut,
   Clock, CheckCircle, Search, Compass, Heart, Bell, ChevronRight,
-  ArrowUpRight, Star
+  ArrowUpRight, Star, History
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -52,6 +52,7 @@ export default function ClientDashboardPage() {
     { label: 'Overview', icon: LayoutDashboard, href: '/marketplace/dashboard/client', active: true },
     { label: 'My Bookings', icon: ShoppingBag, href: '/marketplace/dashboard/client/bookings' },
     { label: 'Saved Services', icon: Heart, href: '/marketplace/dashboard/client/saved' },
+    { label: 'History', icon: History, href: '/marketplace/dashboard/history' },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/client/profile' },
   ];
 

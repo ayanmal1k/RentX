@@ -8,7 +8,7 @@ import { updateUserProfile, UserProfile } from '@/lib/firestore-helpers';
 import {
   UserCircle, Mail, MapPin, Globe, Twitter, Github, Wallet,
   LayoutDashboard, Package, BookOpen, Menu, LogOut, Save, Camera,
-  ShieldCheck, AlertCircle, ExternalLink, Star, ShoppingBag
+  ShieldCheck, AlertCircle, ExternalLink, Star, ShoppingBag, History
 } from 'lucide-react';
 import { format } from 'date-fns';
 import CustomModal from '@/components/rentx/CustomModal';
@@ -91,6 +91,7 @@ export default function ProviderProfilePage() {
     { label: 'My Services', icon: Package, href: '/marketplace/dashboard/provider/services' },
     { label: 'Bookings', icon: BookOpen, href: '/marketplace/dashboard/provider/bookings' },
     { label: 'Wallet', icon: Wallet, href: '/marketplace/dashboard/provider/wallet' },
+    { label: 'History', icon: History, href: '/marketplace/dashboard/history' },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/provider/profile', active: true },
   ];
 

@@ -89,7 +89,7 @@ export default function ProviderWalletPage() {
       });
 
       // availableBalance is what was released minus what was already requested/withdrawn
-      const actualAvailable = available - (withdrawals.reduce((acc, curr) => acc + curr.amount, 0));
+      const actualAvailable = available - withdrawn;
 
       setStats({
         totalEarnings: total,
@@ -113,26 +113,55 @@ export default function ProviderWalletPage() {
     }
 
     const walletAddress = primaryWallet.address;
+    const amountToWithdraw = stats.availableBalance;
     
     setModalConfig({
       isOpen: true,
-      title: 'Confirm Withdrawal',
-      message: `Are you sure you want to request a withdrawal of ${stats.availableBalance} RENTX to your wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-6)})?`,
+      title: 'Confirm Immediate Withdrawal',
+      message: `Withdraw ${amountToWithdraw} RENTX tokens? This will be transferred immediately from our treasury to your wallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-6)}`,
       type: 'confirm',
       onConfirm: async () => {
         setWithdrawing(true);
         try {
-          await createWithdrawal({
-            providerId: user.uid,
-            amount: stats.availableBalance,
-            solanaWallet: walletAddress,
-            status: 'pending'
+          // 1. Call API for Solana transfer (treasury → provider wallet)
+          const response = await fetch('/api/marketplace/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: amountToWithdraw,
+              walletAddress: walletAddress
+            })
           });
-          toast.success('Withdrawal request submitted!');
-          await loadData();
+          
+          const text = await response.text();
+          let result;
+          try {
+            result = JSON.parse(text);
+          } catch {
+            console.error('Non-JSON response from withdraw API:', text.slice(0, 200));
+            toast.error('Server error. Please try again later.');
+            setWithdrawing(false);
+            return;
+          }
+          
+          if (response.ok && result.success) {
+            // 2. Create withdrawal record in Firestore (client-side)
+            await createWithdrawal({
+              providerId: user.uid,
+              amount: amountToWithdraw,
+              solanaWallet: walletAddress,
+              status: 'completed',
+              transactionSignature: result.txHash,
+            });
+
+            toast.success('Withdrawal successful! Funds sent to your wallet.');
+            await loadData();
+          } else {
+            toast.error(result.error || 'Withdrawal failed. Please try again later.');
+          }
         } catch (err) {
           console.error(err);
-          toast.error('Failed to submit withdrawal request');
+          toast.error('Failed to process withdrawal request');
         }
         setWithdrawing(false);
       }
@@ -148,6 +177,7 @@ export default function ProviderWalletPage() {
     { label: 'My Services', icon: Package, href: '/marketplace/dashboard/provider/services' },
     { label: 'Bookings', icon: BookOpen, href: '/marketplace/dashboard/provider/bookings' },
     { label: 'Wallet', icon: Wallet, href: '/marketplace/dashboard/provider/wallet', active: true },
+    { label: 'History', icon: History, href: '/marketplace/dashboard/history' },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/provider/profile' },
   ];
 
@@ -272,12 +302,12 @@ export default function ProviderWalletPage() {
             <div className="glass-card rounded-3xl border border-white/5 overflow-hidden">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <h3 className="font-bold flex items-center gap-2"><CreditCard className="w-4 h-4 text-primary" /> Recent Payments</h3>
-                <button 
-                  onClick={() => setViewAllPayments(!viewAllPayments)}
+                <Link 
+                  href="/marketplace/dashboard/history?filter=payment"
                   className="text-[10px] text-primary font-bold hover:underline"
                 >
-                  {viewAllPayments ? 'Show Less' : 'View All'}
-                </button>
+                  View All
+                </Link>
               </div>
               <div className="divide-y divide-white/5">
                 {payments.length === 0 ? (
@@ -308,12 +338,12 @@ export default function ProviderWalletPage() {
             <div className="glass-card rounded-3xl border border-white/5 overflow-hidden">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <h3 className="font-bold flex items-center gap-2"><ArrowUpRight className="w-4 h-4 text-error" /> Withdrawal History</h3>
-                <button 
-                  onClick={() => setViewAllWithdrawals(!viewAllWithdrawals)}
+                <Link 
+                  href="/marketplace/dashboard/history?filter=withdrawal"
                   className="text-[10px] text-primary font-bold hover:underline"
                 >
-                  {viewAllWithdrawals ? 'Show Less' : 'View All'}
-                </button>
+                  View All
+                </Link>
               </div>
               <div className="divide-y divide-white/5">
                 {withdrawals.length === 0 ? (

@@ -367,26 +367,28 @@ export async function getProviderPayments(providerId: string): Promise<Payment[]
 }
 
 export async function releasePayment(bookingId: string) {
-  // 1. Update Booking to confirmed (final stage)
-  const bookingRef = doc(db, 'bookings', bookingId);
-  await updateDoc(bookingRef, { status: 'confirmed', buyerConfirmed: true, updatedAt: serverTimestamp() });
-
-  // 2. Find and update Payment
   const currentUserId = auth.currentUser?.uid;
   if (!currentUserId) throw new Error('User not authenticated');
 
+  // 1. Update Booking to confirmed (delivery accepted)
+  const bookingRef = doc(db, 'bookings', bookingId);
+  await updateDoc(bookingRef, { 
+    status: 'confirmed', 
+    buyerConfirmed: true, 
+    updatedAt: serverTimestamp() 
+  });
+
+  // 2. Find and update Payment to released
   const q = query(
     collection(db, 'payments'), 
-    where('bookingId', '==', bookingId),
-    where('clientId', '==', currentUserId)
+    where('bookingId', '==', bookingId)
   );
   const snap = await getDocs(q);
   if (!snap.empty) {
     const paymentDoc = snap.docs[0];
     const paymentData = paymentDoc.data() as Payment;
-    const paymentId = paymentDoc.id;
 
-    await updateDoc(doc(db, 'payments', paymentId), {
+    await updateDoc(doc(db, 'payments', paymentDoc.id), {
       status: 'released',
       updatedAt: serverTimestamp()
     });
@@ -527,9 +529,10 @@ export async function getBookingReview(bookingId: string): Promise<Review | null
 
 export async function createWithdrawal(data: Partial<Withdrawal>): Promise<string> {
   const ref = await addDoc(collection(db, 'withdrawals'), {
-    ...data,
     status: 'pending',
+    ...data,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
   return ref.id;
 }

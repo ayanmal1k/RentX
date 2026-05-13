@@ -8,7 +8,7 @@ import { getProviderServices, createService, updateService, deleteService, Servi
 import {
   Package, Plus, Edit3, Trash2, Save, X, ArrowLeft, Eye, Check,
   LayoutDashboard, Calendar, BookOpen, CreditCard, Wallet, UserCircle,
-  Menu, LogOut, AlertCircle, ShoppingBag
+  Menu, LogOut, AlertCircle, ShoppingBag, History
 } from 'lucide-react';
 import CustomModal from '@/components/rentx/CustomModal';
 
@@ -139,6 +139,7 @@ function ProviderServicesContent() {
     { label: 'My Services', icon: Package, href: '/marketplace/dashboard/provider/services', active: true },
     { label: 'Bookings', icon: BookOpen, href: '/marketplace/dashboard/provider/bookings' },
     { label: 'Wallet', icon: Wallet, href: '/marketplace/dashboard/provider/wallet' },
+    { label: 'History', icon: History, href: '/marketplace/dashboard/history' },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/provider/profile' },
   ];
 

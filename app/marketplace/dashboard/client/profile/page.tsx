@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { updateUserProfile, UserProfile } from '@/lib/firestore-helpers';
 import {
   UserCircle, Mail, MapPin, Globe, LayoutDashboard, ShoppingBag, 
-  Heart, Menu, LogOut, Save, Camera, ShieldCheck, CreditCard, Bell
+  Heart, Menu, LogOut, Save, Camera, ShieldCheck, CreditCard, Bell, History
 } from 'lucide-react';
 import CustomModal from '@/components/rentx/CustomModal';
 
@@ -81,6 +81,7 @@ export default function ClientProfilePage() {
     { label: 'Overview', icon: LayoutDashboard, href: '/marketplace/dashboard/client' },
     { label: 'My Bookings', icon: ShoppingBag, href: '/marketplace/dashboard/client/bookings' },
     { label: 'Saved Services', icon: Heart, href: '/marketplace/dashboard/client/saved' },
+    { label: 'History', icon: History, href: '/marketplace/dashboard/history' },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/client/profile', active: true },
   ];
 

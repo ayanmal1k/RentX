@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import {
   getClientBookings,
@@ -43,10 +43,20 @@ type Transaction = {
 export default function HistoryPage() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get('filter') as 'all' | 'payment' | 'withdrawal' || 'all';
+  
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'payment' | 'withdrawal'>('all');
+  const [filter, setFilter] = useState<'all' | 'payment' | 'withdrawal'>(initialFilter);
+
+  useEffect(() => {
+    const queryFilter = searchParams.get('filter');
+    if (queryFilter && (queryFilter === 'payment' || queryFilter === 'withdrawal' || queryFilter === 'all')) {
+      setFilter(queryFilter as any);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/marketplace/auth');
@@ -111,7 +121,7 @@ export default function HistoryPage() {
                   ? new Date((w.createdAt as any).seconds * 1000)
                   : (w.createdAt instanceof Date ? w.createdAt : new Date()),
             title: 'Withdrawal to Wallet',
-            txHash: w.txHash,
+            txHash: w.transactionSignature,
             relatedId: w.id
           });
         });

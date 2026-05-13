@@ -259,7 +259,7 @@ export default function ProviderDashboardPage() {
               <div className="glass-card rounded-3xl border border-white/5 overflow-hidden">
                 <div className="p-6 border-b border-white/5 flex items-center justify-between">
                   <h3 className="font-bold text-sm flex items-center gap-2"><DollarSign className="w-4 h-4 text-green-500" /> Recent Earnings</h3>
-                  <Link href="/marketplace/dashboard/provider/wallet" className="text-[10px] text-gray-500 hover:text-primary">Wallet</Link>
+                  <Link href="/marketplace/dashboard/history?filter=payment" className="text-[10px] text-primary font-bold hover:underline flex items-center gap-1">View All <ChevronRight className="w-3 h-3" /></Link>
                 </div>
                 <div className="p-4 space-y-4">
                   {payments.filter(p => p.status === 'released').slice(0, 3).map((p) => (

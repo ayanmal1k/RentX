@@ -8,7 +8,7 @@ import { getProviderBookings, updateBookingStatus, Booking } from '@/lib/firesto
 import {
   BookOpen, Clock, CheckCircle, XCircle, AlertCircle, ChevronRight,
   LayoutDashboard, Package, Wallet, UserCircle, Menu, LogOut,
-  MessageSquare, Calendar, MoreVertical, Search, Filter, ShoppingBag
+  MessageSquare, Calendar, MoreVertical, Search, Filter, ShoppingBag, History
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatDate } from '@/lib/utils';
@@ -79,6 +79,7 @@ export default function ProviderBookingsPage() {
     { label: 'My Services', icon: Package, href: '/marketplace/dashboard/provider/services' },
     { label: 'Bookings', icon: BookOpen, href: '/marketplace/dashboard/provider/bookings', active: true },
     { label: 'Wallet', icon: Wallet, href: '/marketplace/dashboard/provider/wallet' },
+    { label: 'History', icon: History, href: '/marketplace/dashboard/history' },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/provider/profile' },
   ];
 
