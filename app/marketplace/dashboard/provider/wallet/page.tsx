@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getProviderPayments, getProviderWithdrawals, createWithdrawal, Payment, Withdrawal } from '@/lib/firestore-helpers';
+import { getProviderPayments, getProviderWithdrawals, createWithdrawal, getProviderBookings, Payment, Withdrawal, Booking } from '@/lib/firestore-helpers';
 import {
   Wallet, TrendingUp, Clock, CheckCircle, AlertCircle, ArrowUpRight,
   LayoutDashboard, Package, BookOpen, UserCircle, Menu, LogOut,
@@ -21,6 +21,7 @@ export default function ProviderWalletPage() {
   const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -63,21 +64,39 @@ export default function ProviderWalletPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const [p, w] = await Promise.all([
-        getProviderPayments(user.uid),
-        getProviderWithdrawals(user.uid)
-      ]);
+      let p: Payment[] = [];
+      let w: Withdrawal[] = [];
+      let b: Booking[] = [];
+      
+      try {
+        p = await getProviderPayments(user.uid);
+      } catch (e) { console.error("Error loading payments:", e); }
+
+      try {
+        w = await getProviderWithdrawals(user.uid);
+      } catch (e) { console.error("Error loading withdrawals:", e); }
+
+      try {
+        b = await getProviderBookings(user.uid);
+      } catch (e) { console.error("Error loading bookings:", e); }
+
       setPayments(p);
       setWithdrawals(w);
+      setBookings(b);
 
       // Calculate stats
       let total = 0, available = 0, pending = 0, withdrawn = 0;
 
       p.forEach(pay => {
-        if (pay.status === 'released') {
+        const booking = b.find(bk => bk.id === pay.bookingId);
+        // A payment is considered released if its status is 'released' OR 
+        // if the associated booking is 'confirmed' (meaning buyer already authorized release)
+        const isReleased = pay.status === 'released' || (booking && booking.status === 'confirmed');
+
+        if (isReleased) {
           available += pay.amount;
           total += pay.amount;
-        } else if (pay.status === 'held') {
+        } else if (pay.status === 'held' || pay.status === 'pending') {
           pending += pay.amount;
         }
       });
@@ -326,7 +345,15 @@ export default function ProviderWalletPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-bold text-white">+{p.amount} RENTX</div>
-                        <div className={`text-[10px] font-bold uppercase ${p.status === 'released' ? 'text-green-500' : 'text-yellow-500'}`}>{p.status}</div>
+                      {(() => {
+                        const booking = bookings.find(bk => bk.id === p.bookingId);
+                        const isReleased = p.status === 'released' || (booking && booking.status === 'confirmed');
+                        return (
+                          <div className={`text-[10px] font-bold uppercase ${isReleased ? 'text-green-500' : 'text-yellow-500'}`}>
+                            {isReleased ? 'released' : p.status}
+                          </div>
+                        );
+                      })()}
                       </div>
                     </div>
                   ))

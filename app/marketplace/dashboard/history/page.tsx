@@ -17,13 +17,15 @@ import {
   ExternalLink,
   Filter,
   Search,
+  LogOut,
+  Calendar,
+  Package,
+  BookOpen,
   LayoutDashboard,
   Wallet,
-  ShoppingBag,
   UserCircle,
-  Menu,
-  LogOut,
-  Calendar
+  ShoppingBag,
+  Menu
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
@@ -50,6 +52,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'payment' | 'withdrawal'>(initialFilter);
+  const [isProvider, setIsProvider] = useState(false);
 
   useEffect(() => {
     const queryFilter = searchParams.get('filter');
@@ -72,59 +75,65 @@ export default function HistoryPage() {
     try {
       const allTransactions: Transaction[] = [];
 
-      if (userProfile.role === 'client') {
-        const bookings = await getClientBookings(user.uid);
-        bookings.forEach(b => {
+      // Always try to fetch everything to ensure no data is missed if role is inconsistent
+      const [clientBookings, providerBookings, withdrawals] = await Promise.all([
+        getClientBookings(user.uid).catch(() => []),
+        getProviderBookings(user.uid).catch(() => []),
+        getProviderWithdrawals(user.uid).catch(() => [])
+      ]);
+
+      // Process Client Bookings (as a buyer)
+      clientBookings.forEach(b => {
+        allTransactions.push({
+          id: b.id!,
+          type: 'booking_payment',
+          amount: b.packagePrice,
+          status: b.status,
+          date: b.createdAt && typeof b.createdAt === 'object' && 'seconds' in (b.createdAt as any) 
+                ? new Date((b.createdAt as any).seconds * 1000) 
+                : (b.createdAt instanceof Date ? b.createdAt : new Date()),
+          title: `Payment for ${b.serviceTitle}`,
+          txHash: b.paymentTxHash,
+          relatedId: b.id
+        });
+      });
+
+      // Process Provider Bookings (as an earner)
+      providerBookings.forEach(b => {
+        if (b.status === 'completed' || b.status === 'confirmed') {
           allTransactions.push({
             id: b.id!,
-            type: 'booking_payment',
+            type: 'earning',
             amount: b.packagePrice,
             status: b.status,
-            date: b.createdAt && typeof b.createdAt === 'object' && 'seconds' in (b.createdAt as any) 
-                  ? new Date((b.createdAt as any).seconds * 1000) 
-                  : (b.createdAt instanceof Date ? b.createdAt : new Date()),
-            title: `Payment for ${b.serviceTitle}`,
-            txHash: b.paymentTxHash,
+            date: b.updatedAt && typeof b.updatedAt === 'object' && 'seconds' in (b.updatedAt as any)
+                  ? new Date((b.updatedAt as any).seconds * 1000)
+                  : (b.updatedAt instanceof Date ? b.updatedAt : new Date()),
+            title: `Earning from ${b.serviceTitle}`,
             relatedId: b.id
           });
-        });
-      } else {
-        // Provider
-        const [bookings, withdrawals] = await Promise.all([
-          getProviderBookings(user.uid),
-          getProviderWithdrawals(user.uid)
-        ]);
+        }
+      });
 
-        bookings.forEach(b => {
-          if (b.status === 'completed') {
-            allTransactions.push({
-              id: b.id!,
-              type: 'earning',
-              amount: b.packagePrice,
-              status: 'completed',
-              date: b.updatedAt && typeof b.updatedAt === 'object' && 'seconds' in (b.updatedAt as any)
-                    ? new Date((b.updatedAt as any).seconds * 1000)
-                    : (b.updatedAt instanceof Date ? b.updatedAt : new Date()),
-              title: `Earning from ${b.serviceTitle}`,
-              relatedId: b.id
-            });
-          }
+      // Process Withdrawals
+      withdrawals.forEach(w => {
+        allTransactions.push({
+          id: w.id!,
+          type: 'withdrawal',
+          amount: w.amount,
+          status: w.status,
+          date: w.createdAt && typeof w.createdAt === 'object' && 'seconds' in (w.createdAt as any)
+                ? new Date((w.createdAt as any).seconds * 1000)
+                : (w.createdAt instanceof Date ? w.createdAt : new Date()),
+          title: 'Withdrawal to Wallet',
+          txHash: w.transactionSignature,
+          relatedId: w.id
         });
+      });
 
-        withdrawals.forEach(w => {
-          allTransactions.push({
-            id: w.id!,
-            type: 'withdrawal',
-            amount: w.amount,
-            status: w.status,
-            date: w.createdAt && typeof w.createdAt === 'object' && 'seconds' in (w.createdAt as any)
-                  ? new Date((w.createdAt as any).seconds * 1000)
-                  : (w.createdAt instanceof Date ? w.createdAt : new Date()),
-            title: 'Withdrawal to Wallet',
-            txHash: w.transactionSignature,
-            relatedId: w.id
-          });
-        });
+      // Update provider status if any provider activity exists
+      if (providerBookings.length > 0 || withdrawals.length > 0 || userProfile.role === 'provider') {
+        setIsProvider(true);
       }
 
       setTransactions(allTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()));
@@ -134,9 +143,10 @@ export default function HistoryPage() {
     setLoading(false);
   };
 
-  const navItems = userProfile?.role === 'provider' ? [
+  const navItems = isProvider ? [
     { label: 'Overview', icon: LayoutDashboard, href: '/marketplace/dashboard/provider' },
-    { label: 'Bookings', icon: ShoppingBag, href: '/marketplace/dashboard/provider/bookings' },
+    { label: 'My Services', icon: Package, href: '/marketplace/dashboard/provider/services' },
+    { label: 'Bookings', icon: BookOpen, href: '/marketplace/dashboard/provider/bookings' },
     { label: 'Wallet', icon: Wallet, href: '/marketplace/dashboard/provider/wallet' },
     { label: 'History', icon: History, href: '/marketplace/dashboard/history', active: true },
     { label: 'Profile', icon: UserCircle, href: '/marketplace/dashboard/provider/profile' },
@@ -169,8 +179,16 @@ export default function HistoryPage() {
             return (<Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${item.active ? 'bg-primary/10 text-primary border border-primary/20' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}><Icon className="w-4 h-4" />{item.label}</Link>);
           })}
         </nav>
-        <div className="p-4 border-t border-white/5">
-          <button onClick={logout} className="flex items-center gap-2 px-4 py-2 rounded-xl text-gray-400 hover:text-red-400 text-sm w-full transition-all"><LogOut className="w-4 h-4" /> Sign Out</button>
+        <div className="p-4 border-t border-white/5 space-y-2">
+          {isProvider && (
+            <button 
+              onClick={() => router.push('/marketplace')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 text-xs w-full transition-all font-bold uppercase tracking-widest"
+            >
+              <ShoppingBag className="w-4 h-4" /> Switch to Buying
+            </button>
+          )}
+          <button onClick={logout} className="flex items-center gap-2 px-4 py-2 rounded-xl text-gray-400 hover:text-red-400 text-xs w-full transition-all font-medium"><LogOut className="w-4 h-4" /> Sign Out</button>
         </div>
       </aside>
 
@@ -179,6 +197,12 @@ export default function HistoryPage() {
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-400"><Menu className="w-5 h-5" /></button>
             <h1 className="text-lg font-bold">Transaction History</h1>
+            {isProvider && (
+              <div className="hidden sm:flex items-center gap-2 ml-4">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Provider Mode</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <NotificationBell />

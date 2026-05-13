@@ -304,15 +304,23 @@ export async function updateBooking(id: string, data: Partial<Booking>) {
 }
 
 export async function getClientBookings(clientId: string): Promise<Booking[]> {
-  const q = query(collection(db, 'bookings'), where('clientId', '==', clientId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'bookings'), where('clientId', '==', clientId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Booking));
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Booking)).sort((a, b) => {
+    const aTime = a.createdAt && typeof a.createdAt === 'object' && 'seconds' in (a.createdAt as any) ? (a.createdAt as any).seconds : 0;
+    const bTime = b.createdAt && typeof b.createdAt === 'object' && 'seconds' in (b.createdAt as any) ? (b.createdAt as any).seconds : 0;
+    return bTime - aTime;
+  });
 }
 
 export async function getProviderBookings(providerId: string): Promise<Booking[]> {
-  const q = query(collection(db, 'bookings'), where('providerId', '==', providerId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'bookings'), where('providerId', '==', providerId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Booking));
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Booking)).sort((a, b) => {
+    const aTime = a.createdAt && typeof a.createdAt === 'object' && 'seconds' in (a.createdAt as any) ? (a.createdAt as any).seconds : 0;
+    const bTime = b.createdAt && typeof b.createdAt === 'object' && 'seconds' in (b.createdAt as any) ? (b.createdAt as any).seconds : 0;
+    return bTime - aTime;
+  });
 }
 
 export async function updateBookingStatus(id: string, status: Booking['status']) {
@@ -344,7 +352,7 @@ export async function updateBookingStatus(id: string, status: Booking['status'])
 export async function createPayment(data: Partial<Payment>): Promise<string> {
   const ref = await addDoc(collection(db, 'payments'), {
     ...data,
-    status: 'pending',
+    status: data.status || 'held',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -361,14 +369,20 @@ export async function updatePayment(id: string, data: Partial<Payment>) {
 }
 
 export async function getProviderPayments(providerId: string): Promise<Payment[]> {
-  const q = query(collection(db, 'payments'), where('providerId', '==', providerId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'payments'), where('providerId', '==', providerId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Payment));
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Payment)).sort((a, b) => {
+    const aTime = a.createdAt && typeof a.createdAt === 'object' && 'seconds' in (a.createdAt as any) ? (a.createdAt as any).seconds : 0;
+    const bTime = b.createdAt && typeof b.createdAt === 'object' && 'seconds' in (b.createdAt as any) ? (b.createdAt as any).seconds : 0;
+    return bTime - aTime;
+  });
 }
 
 export async function releasePayment(bookingId: string) {
   const currentUserId = auth.currentUser?.uid;
   if (!currentUserId) throw new Error('User not authenticated');
+
+  console.log("Starting releasePayment for booking:", bookingId);
 
   // 1. Update Booking to confirmed (delivery accepted)
   const bookingRef = doc(db, 'bookings', bookingId);
@@ -378,29 +392,39 @@ export async function releasePayment(bookingId: string) {
     updatedAt: serverTimestamp() 
   });
 
-  // 2. Find and update Payment to released
+  // 2. Find and update Payment(s) to released
   const q = query(
     collection(db, 'payments'), 
     where('bookingId', '==', bookingId)
   );
   const snap = await getDocs(q);
-  if (!snap.empty) {
-    const paymentDoc = snap.docs[0];
+  
+  if (snap.empty) {
+    console.warn("No payment documents found for booking:", bookingId);
+    return;
+  }
+
+  console.log(`Found ${snap.docs.length} payment(s) to release.`);
+
+  for (const paymentDoc of snap.docs) {
     const paymentData = paymentDoc.data() as Payment;
+    
+    // Only update if not already released
+    if (paymentData.status !== 'released') {
+      await updateDoc(doc(db, 'payments', paymentDoc.id), {
+        status: 'released',
+        updatedAt: serverTimestamp()
+      });
 
-    await updateDoc(doc(db, 'payments', paymentDoc.id), {
-      status: 'released',
-      updatedAt: serverTimestamp()
-    });
-
-    // 3. Notify Provider
-    await createNotification({
-      userId: paymentData.providerId,
-      type: 'payment',
-      title: 'Payment Released!',
-      message: `Your payment of ${paymentData.amount} RENTX for booking #${bookingId.slice(-6)} has been released and is now available for withdrawal.`,
-      link: '/marketplace/dashboard/provider/wallet',
-    });
+      // 3. Notify Provider (for each payment released)
+      await createNotification({
+        userId: paymentData.providerId,
+        type: 'payment',
+        title: 'Payment Released!',
+        message: `Your payment of ${paymentData.amount} RENTX for booking #${bookingId.slice(-6)} has been released and is now available for withdrawal.`,
+        link: '/marketplace/dashboard/provider/wallet',
+      });
+    }
   }
 }
 
@@ -538,9 +562,13 @@ export async function createWithdrawal(data: Partial<Withdrawal>): Promise<strin
 }
 
 export async function getProviderWithdrawals(providerId: string): Promise<Withdrawal[]> {
-  const q = query(collection(db, 'withdrawals'), where('providerId', '==', providerId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'withdrawals'), where('providerId', '==', providerId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Withdrawal));
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Withdrawal)).sort((a, b) => {
+    const aTime = a.createdAt && typeof a.createdAt === 'object' && 'seconds' in (a.createdAt as any) ? (a.createdAt as any).seconds : 0;
+    const bTime = b.createdAt && typeof b.createdAt === 'object' && 'seconds' in (b.createdAt as any) ? (b.createdAt as any).seconds : 0;
+    return bTime - aTime;
+  });
 }
 
 // ============================================================
