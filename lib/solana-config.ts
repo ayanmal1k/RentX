@@ -14,8 +14,10 @@ export const SOLANA_NETWORK: SolanaNetwork = requestedNetwork === 'mainnet'
 export const SOLANA_TOKEN_MINT =
   process.env.NEXT_PUBLIC_SOLANA_TOKEN_MINT || 'Bswn6Dg8Ji5esNCcncsLqb1DmjBUSkmuDcf1xaXL45fc';
 
+export const SOLANA_TOKEN_DECIMALS = 9;
+
 export const TREASURY_WALLET_ADDRESS =
-  process.env.NEXT_PUBLIC_TREASURY_WALLET_ADDRESS || 'Cf2Cdmwxzewyu5473yHnkCFhopM8ZoB6uFabJUZKLMm3';
+  process.env.NEXT_PUBLIC_TREASURY_WALLET_ADDRESS || 'Gwa1snu3SR8Q2JA2jyqWoGe1t8YZmCuFvCHZVzw5cRUG';
 
 export const SOLANA_USDC_MINT = process.env.NEXT_PUBLIC_SOLANA_USDC_MINT || (
   SOLANA_NETWORK === 'mainnet-beta'

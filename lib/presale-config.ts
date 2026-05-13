@@ -9,38 +9,10 @@ export interface PresalePhase {
 export const PRESALE_PHASES: PresalePhase[] = [
   {
     phase: 1,
-    label: 'Phase 1',
+    label: 'Standard Phase',
     startDate: new Date('2026-04-20T00:00:00Z'),
-    endDate: new Date('2026-05-25T23:59:59Z'),
-    priceUsd: 0.00001,
-  },
-  {
-    phase: 2,
-    label: 'Phase 2',
-    startDate: new Date('2026-05-26T00:00:00Z'),
-    endDate: new Date('2026-06-26T23:59:59Z'),
-    priceUsd: 0.00002,
-  },
-  {
-    phase: 3,
-    label: 'Phase 3',
-    startDate: new Date('2026-06-27T00:00:00Z'),
-    endDate: new Date('2026-07-27T23:59:59Z'),
-    priceUsd: 0.00003,
-  },
-  {
-    phase: 4,
-    label: 'Phase 4',
-    startDate: new Date('2026-07-28T00:00:00Z'),
-    endDate: new Date('2026-07-29T23:59:59Z'),
-    priceUsd: 0.00004,
-  },
-  {
-    phase: 5,
-    label: 'Phase 5',
-    startDate: new Date('2026-07-30T00:00:00Z'),
-    endDate: new Date('2026-08-31T23:59:59Z'),
-    priceUsd: 0.00005,
+    endDate: new Date('2026-12-31T23:59:59Z'),
+    priceUsd: 0.0001,
   },
 ];
 

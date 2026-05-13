@@ -62,6 +62,7 @@ export const metadata: Metadata = {
 }
 
 import { DynamicProvider } from '@/components/rentx/DynamicProvider'
+import { AuthProvider } from '@/lib/auth-context'
 
 export default function RootLayout({
   children,
@@ -71,9 +72,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakarta.variable} ${manrope.variable} ${goodTimes.variable} ${jetbrainsMono.variable}`}>
       <body className="font-body antialiased">
-        <DynamicProvider>
-          {children}
-        </DynamicProvider>
+        <AuthProvider>
+          <DynamicProvider>
+            {children}
+          </DynamicProvider>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

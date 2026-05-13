@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowDown, AlertCircle, CheckCircle2, Loader2, Coins, TrendingUp, Info } from 'lucide-react'
+import { ArrowDown, AlertCircle, CheckCircle2, Loader2, Coins, TrendingUp, Info, LogOut } from 'lucide-react'
 import { getActivePresalePriceUsd, getPhaseForDate } from '@/lib/presale-config'
 import { SOLANA_NETWORK, SOLANA_USDC_MINT, TREASURY_WALLET_ADDRESS } from '@/lib/solana-config'
 import { WalletConnect } from './WalletConnect'
@@ -16,7 +16,7 @@ interface BuyRentxBoxProps {
 }
 
 export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
-  const { primaryWallet } = useDynamicContext()
+  const { primaryWallet, handleLogOut } = useDynamicContext()
   const [amount, setAmount] = useState('')
   const [prices, setPrices] = useState({ USDC: 1, SOL: 0 })
   const [isLoading, setIsLoading] = useState(false)
@@ -24,7 +24,7 @@ export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
   const [message, setMessage] = useState('')
   const [txHash, setTxHash] = useState('')
 
-  const currentPriceUsd = 0.10 // Static price as requested
+  const currentPriceUsd = 0.0001 // Updated to 0.0001 USDC as requested
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -113,11 +113,11 @@ export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
         <div className="absolute inset-0 -z-10 opacity-30">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.15),transparent_70%)]" />
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-6">
-            <div>
-              <h2 className="text-3xl font-black text-white mb-2 tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>Acquire RENTX</h2>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-3xl font-black text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>Acquire RENTX</h2>
               <p className="text-on-surface-variant text-sm flex items-center gap-2 font-medium">
                 <TrendingUp size={16} className="text-primary animate-pulse" />
                 Current Rate: <span className="text-primary font-bold">${currentPriceUsd} USD</span>
@@ -130,9 +130,8 @@ export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
                 <button
                   key={cur}
                   onClick={() => onCurrencyChange(cur)}
-                  className={`relative px-6 py-2.5 rounded-xl text-[10px] font-black transition-all duration-500 tracking-[0.2em] uppercase ${
-                    currency === cur ? 'text-black' : 'text-white/40 hover:text-white/80'
-                  }`}
+                  className={`relative px-6 py-2.5 rounded-xl text-[10px] font-black transition-all duration-500 tracking-[0.2em] uppercase ${currency === cur ? 'text-black' : 'text-white/40 hover:text-white/80'
+                    }`}
                 >
                   {currency === cur && (
                     <motion.div
@@ -159,7 +158,7 @@ export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
                   Live {currency} Rate
                 </div>
               </div>
-              
+
               <div className="relative group/input">
                 <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-500" />
                 <input
@@ -216,18 +215,17 @@ export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
                 exit={{ opacity: 0, height: 0 }}
                 className="mt-6"
               >
-                <div className={`p-4 rounded-2xl flex items-start gap-3 border ${
-                  status === 'pending' ? 'bg-primary/5 border-primary/20 text-primary' :
-                  status === 'success' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' :
-                  'bg-error/5 border-error/20 text-error'
-                }`}>
+                <div className={`p-4 rounded-2xl flex items-start gap-3 border ${status === 'pending' ? 'bg-primary/5 border-primary/20 text-primary' :
+                    status === 'success' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' :
+                      'bg-error/5 border-error/20 text-error'
+                  }`}>
                   {status === 'pending' ? <Loader2 size={18} className="animate-spin mt-0.5" /> :
-                   status === 'success' ? <CheckCircle2 size={18} className="mt-0.5" /> :
-                   <AlertCircle size={18} className="mt-0.5" />}
+                    status === 'success' ? <CheckCircle2 size={18} className="mt-0.5" /> :
+                      <AlertCircle size={18} className="mt-0.5" />}
                   <div className="flex-1">
                     <p className="text-sm font-medium">{message}</p>
                     {status === 'success' && txHash && (
-                      <a 
+                      <a
                         href={`https://explorer.solana.com/tx/${txHash}?cluster=${SOLANA_NETWORK}`}
                         target="_blank"
                         rel="noreferrer"
@@ -272,6 +270,30 @@ export function BuyRentxBox({ currency, onCurrencyChange }: BuyRentxBoxProps) {
               </motion.button>
             )}
           </div>
+
+          {/* Wallet Connection Status - Non-intrusive Position */}
+          {primaryWallet && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-8 p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between group/wallet"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                <span className="text-[10px] font-bold text-white/30 uppercase tracking-[0.1em]">Connected</span>
+                <span className="text-xs font-black text-white/70 tracking-wider">
+                  {primaryWallet.address.slice(0, 4)}...{primaryWallet.address.slice(-4)}
+                </span>
+              </div>
+              <button
+                onClick={() => handleLogOut()}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white/40 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all uppercase tracking-widest"
+              >
+                Disconnect
+                <LogOut size={12} />
+              </button>
+            </motion.div>
+          )}
 
           {/* Additional Info */}
           <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
