@@ -58,6 +58,8 @@ export default function ServiceDetailPage() {
   const [selectedPackage, setSelectedPackage] = useState(0);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
   const [showBooking, setShowBooking] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -75,6 +77,15 @@ export default function ServiceDetailPage() {
     }
     load();
   }, [serviceId]);
+
+  useEffect(() => {
+    if (userProfile) {
+      setBuyerEmail(userProfile.email || user?.email || '');
+      setBuyerPhone(userProfile.phone || '');
+    } else if (user) {
+      setBuyerEmail(user.email || '');
+    }
+  }, [user, userProfile]);
 
   const { primaryWallet, handleLogOut, setShowAuthFlow } = useDynamicContext();
 
@@ -117,6 +128,8 @@ export default function ServiceDetailPage() {
         serviceTitle: service.title,
         providerId: service.providerId || 'demo-provider',
         providerName: service.providerName,
+        providerContact: service.providerContact || undefined,
+        clientContact: { email: buyerEmail || userProfile.email || user.email || '', phone: buyerPhone || userProfile?.phone },
         clientId: user.uid,
         clientName: userProfile.displayName || user.email || 'Client',
         clientEmail: userProfile.email || user.email || '',
@@ -292,6 +305,18 @@ export default function ServiceDetailPage() {
                       <label className="text-on-surface-variant text-xs font-medium mb-1.5 block">Notes (optional)</label>
                       <textarea value={bookingNotes} onChange={(e) => setBookingNotes(e.target.value)} rows={3} placeholder="Any special requirements..."
                         className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-on-surface-variant/50 text-sm focus:outline-none focus:border-primary/50 transition-all resize-none" />
+                    </div>
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-on-surface-variant text-xs font-medium mb-1.5 block">Your Contact Email</label>
+                        <input value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder="you@email.com"
+                          className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary/50 transition-all" />
+                      </div>
+                      <div>
+                        <label className="text-on-surface-variant text-xs font-medium mb-1.5 block">Your Contact Number</label>
+                        <input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="+971 50 123 4567"
+                          className="w-full bg-surface-container-low border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary/50 transition-all" />
+                      </div>
                     </div>
                     {user ? (
                       <div className="space-y-4">

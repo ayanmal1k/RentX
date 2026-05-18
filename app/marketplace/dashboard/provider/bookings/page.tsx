@@ -196,7 +196,7 @@ export default function ProviderBookingsPage() {
                         {b.status === 'active' && (
                           <button onClick={() => b.id && handleStatusUpdate(b.id, 'completed')} className="bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90 flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5" /> Mark as Done</button>
                         )}
-                        <button className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white"><MessageSquare className="w-4 h-4" /></button>
+                        {/* chat removed - show contact after accepting */}
                       </div>
                     </div>
                   </div>
@@ -205,6 +205,20 @@ export default function ProviderBookingsPage() {
                     <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-gray-400">
                       <span className="font-bold text-gray-300 block mb-1">Client Notes:</span>
                       {b.notes}
+                    </div>
+                  )}
+
+                  {b.status === 'active' && (b.clientContact?.email || b.clientContact?.phone) && (
+                    <div className="mt-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl text-sm">
+                      <div className="font-bold text-white mb-2">Client Contact</div>
+                      <div className="flex flex-col gap-2">
+                        {b.clientContact?.email && (
+                          <a href={`mailto:${b.clientContact.email}`} className="text-primary underline">{b.clientContact.email}</a>
+                        )}
+                        {b.clientContact?.phone && (
+                          <a href={`tel:${b.clientContact.phone}`} className="text-primary underline">{b.clientContact.phone}</a>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

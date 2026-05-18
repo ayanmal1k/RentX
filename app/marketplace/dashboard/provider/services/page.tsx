@@ -4,7 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getProviderServices, createService, updateService, deleteService, ServiceListing, ServicePackage } from '@/lib/firestore-helpers';
+import { getProviderServices, createService, updateService, deleteService, ServiceListing, ServicePackage, updateUserProfile } from '@/lib/firestore-helpers';
 import {
   Package, Plus, Edit3, Trash2, Save, X, ArrowLeft, Eye, Check,
   LayoutDashboard, Calendar, BookOpen, CreditCard, Wallet, UserCircle,
@@ -13,6 +13,15 @@ import {
 import CustomModal from '@/components/rentx/CustomModal';
 
 const CATEGORIES = ['DJ & Music', 'Photography', 'Design', 'Development', 'Logistics', 'Repair', 'Education', 'Wellness', 'Other'];
+
+// US states list used when provider wants to offer service for whole state
+const US_STATES = [
+  'Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia',
+  'Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland',
+  'Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey',
+  'New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina',
+  'South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'
+];
 
 function ProviderServicesContent() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
@@ -44,11 +53,17 @@ function ProviderServicesContent() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
+  const [areaType, setAreaType] = useState<'city' | 'state'>('city');
   const [isRemote, setIsRemote] = useState(false);
   const [packages, setPackages] = useState<ServicePackage[]>([
     { name: 'Basic', description: '', price: 0, deliveryDays: 1, features: [] }
   ]);
   const [newFeature, setNewFeature] = useState('');
+  const [providerEmail, setProviderEmail] = useState('');
+  const [providerPhone, setProviderPhone] = useState('');
+  const [countriesList, setCountriesList] = useState<any[]>([]);
+  const [citiesForCountry, setCitiesForCountry] = useState<string[]>([]);
+  const [selectedCountryMeta, setSelectedCountryMeta] = useState<{flag?:string; dialCode?:string; iso2?:string} | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/marketplace/auth');
@@ -56,7 +71,80 @@ function ProviderServicesContent() {
 
   useEffect(() => {
     if (user) loadServices();
-  }, [user]);
+    if (userProfile) {
+      setProviderEmail(userProfile.email || user?.email || '');
+      setProviderPhone(userProfile.phone || '');
+    } else {
+      setProviderEmail(user?.email || '');
+      setProviderPhone('');
+    }
+
+    // Fetch countries + cities and restcountries data to show flags and dial codes
+    async function fetchCountriesAndCities() {
+      try {
+        const [countriesResp, restResp] = await Promise.all([
+          fetch('https://countriesnow.space/api/v0.1/countries'),
+          fetch('https://restcountries.com/v3.1/all')
+        ]);
+        const countriesJson = await countriesResp.json();
+        const restJson = await restResp.json();
+
+        const restArray = Array.isArray(restJson) ? restJson : (restJson?.data && Array.isArray(restJson.data) ? restJson.data : []);
+
+        const restMap: Record<string, any> = {};
+        for (const r of restArray) {
+          if (!r || !r.name) continue;
+          const name = (r.name.common || '').toString();
+          if (!name) continue;
+          restMap[name.toLowerCase()] = r;
+          if (Array.isArray(r.altSpellings)) for (const a of r.altSpellings) if (a) restMap[a.toLowerCase()] = r;
+          if (r.name && r.name.official) restMap[(r.name.official || '').toLowerCase()] = r;
+        }
+
+        const list: any[] = (countriesJson.data || []).map((c: any) => {
+          const key = (c.country || '').toLowerCase();
+          const r = restMap[key] || restMap[(c.country || '').replace(/\s+\(.*\)$/,'').toLowerCase()];
+          let iso2, dialCode, flag;
+          if (r) {
+            iso2 = r.cca2;
+            if (r.idd && r.idd.root) {
+              const suffix = r.idd.suffixes && r.idd.suffixes.length ? r.idd.suffixes[0] : '';
+              dialCode = `${r.idd.root}${suffix}`;
+            }
+            if (iso2) {
+              flag = iso2.toUpperCase().replace(/./g, (ch: string) => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+            }
+          }
+          return { name: c.country, cities: c.cities || [], iso2, dialCode, flag };
+        });
+
+        const sorted = list.sort((a,b) => a.name.localeCompare(b.name));
+        setCountriesList(sorted);
+        // if a country is already selected, sync its meta
+        const existingMeta = sorted.find((c: any) => c.name === country);
+        if (existingMeta) {
+          setCitiesForCountry(existingMeta.cities || []);
+          setSelectedCountryMeta({ flag: existingMeta.flag, dialCode: existingMeta.dialCode, iso2: existingMeta.iso2 });
+        }
+      } catch (err) {
+        console.error('Failed to load countries data', err);
+      }
+    }
+
+    fetchCountriesAndCities();
+  }, [user, userProfile]);
+
+  // Keep selectedCountryMeta and cities in sync when countriesList loads or country changes
+  useEffect(() => {
+    if (!countriesList || countriesList.length === 0) return;
+    const meta = countriesList.find(c => c.name === country);
+    if (meta) {
+      setCitiesForCountry(meta.cities || []);
+      setSelectedCountryMeta({ flag: meta.flag, dialCode: meta.dialCode, iso2: meta.iso2 });
+      // if the selected country is USA, keep areaType as-is; otherwise default to city
+      if (meta.iso2 !== 'US') setAreaType('city');
+    }
+  }, [countriesList, country]);
 
   const loadServices = async () => {
     if (!user) return;
@@ -72,15 +160,31 @@ function ProviderServicesContent() {
   };
 
   const resetForm = () => {
-    setTitle(''); setDescription(''); setCategory(CATEGORIES[0]); setCountry(''); setCity(''); setIsRemote(false);
+    setTitle(''); setDescription(''); setCategory(CATEGORIES[0]); setCountry(''); setCity(''); setAreaType('city'); setIsRemote(false);
     setPackages([{ name: 'Basic', description: '', price: 0, deliveryDays: 1, features: [] }]);
     setEditingId(null); setShowForm(false);
+    setProviderEmail(user?.email || '');
+    setProviderPhone('');
   };
 
   const editService = (s: ServiceListing) => {
     setTitle(s.title); setDescription(s.description); setCategory(s.category);
     setCountry(s.country || ''); setCity(s.city || ''); setIsRemote(s.isRemote || false);
     setPackages(s.packages || []); setEditingId(s.id || null); setShowForm(true);
+    // set cities and country meta if available
+    const meta = countriesList.find(c => c.name === (s.country || ''));
+    if (meta) {
+      setCitiesForCountry(meta.cities || []);
+      setSelectedCountryMeta({ flag: meta.flag, dialCode: meta.dialCode, iso2: meta.iso2 });
+      if (meta.dialCode && !providerPhone) setProviderPhone(meta.dialCode + ' ' + (s.providerContact?.phone || ''));
+      // restore area type if present on listing
+      if ((s as any).serviceArea && (s as any).serviceArea.type) {
+        setAreaType((s as any).serviceArea.type);
+        setCity((s as any).serviceArea.value || s.city || '');
+      } else {
+        setAreaType('city');
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -89,10 +193,17 @@ function ProviderServicesContent() {
     const data: Partial<ServiceListing> = {
       providerId: user.uid, providerName: userProfile.displayName, title, description,
       category, country, city, isRemote, packages, portfolio: [], status: 'active',
+      providerContact: { email: providerEmail || user.email, phone: providerPhone || userProfile?.phone },
+      // Record whether this listing targets a state or a specific city
+      serviceArea: { type: areaType, value: city },
     };
     try {
       if (editingId) { await updateService(editingId, data); }
       else { await createService(data); }
+      // If provider doesn't have phone saved yet, persist it to their profile
+      if (!userProfile?.phone && providerPhone) {
+        try { await updateUserProfile(user.uid, { phone: providerPhone }); } catch (err) { console.error('Failed to update profile phone', err); }
+      }
       await loadServices(); resetForm();
     } catch (err) { console.error(err); }
     setSaving(false);
@@ -207,11 +318,86 @@ function ProviderServicesContent() {
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs font-medium mb-2 block uppercase tracking-wider">Country</label>
-                  <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="UAE" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm" />
+                  <select value={country} onChange={async (e) => {
+                    const val = e.target.value;
+                    setCountry(val);
+                    const meta = countriesList.find(c => c.name === val);
+                    setCitiesForCountry(meta?.cities || []);
+                    // if meta has dialCode, use it; otherwise try to fetch restcountries by name
+                    if (meta && meta.dialCode) {
+                      setSelectedCountryMeta({ flag: meta.flag, dialCode: meta.dialCode, iso2: meta.iso2 });
+                      const stripped = (providerPhone || '').replace(/^\+?[0-9\s\-\(\)]+\s?/, '').trim();
+                      setProviderPhone(`${meta.dialCode} ${stripped}`.trim());
+                    } else {
+                      try {
+                        const resp = await fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(val)}?fullText=true`);
+                        const j = await resp.json();
+                        const r = Array.isArray(j) && j.length ? j[0] : null;
+                        if (r) {
+                          const iso2 = r.cca2;
+                          let dialCode;
+                          if (r.idd && r.idd.root) {
+                            const suffix = r.idd.suffixes && r.idd.suffixes.length ? r.idd.suffixes[0] : '';
+                            dialCode = `${r.idd.root}${suffix}`;
+                          }
+                          const flag = iso2 ? iso2.toUpperCase().replace(/./g, (ch: string) => String.fromCodePoint(127397 + ch.charCodeAt(0))) : undefined;
+                          setSelectedCountryMeta({ flag, dialCode, iso2 });
+                          if (dialCode) {
+                            const stripped = (providerPhone || '').replace(/^\+?[0-9\s\-\(\)]+\s?/, '').trim();
+                            setProviderPhone(`${dialCode} ${stripped}`.trim());
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Failed to lookup country details', err);
+                        setSelectedCountryMeta(meta ? { flag: meta.flag, dialCode: meta.dialCode, iso2: meta.iso2 } : null);
+                      }
+                    }
+                  }} className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white" style={{backgroundColor: '#0a0a0a', color: '#fff'}}>
+                    <option value="">Select country</option>
+                    {countriesList.map((c) => (<option key={c.name} value={c.name} style={{backgroundColor: '#0a0a0a', color: '#fff'}}>{c.flag ? `${c.flag} ${c.name}` : c.name}</option>))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs font-medium mb-2 block uppercase tracking-wider">City</label>
-                  <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Dubai" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm" />
+                  {/* If United States is selected, allow choosing between City or State coverage */}
+                  {((selectedCountryMeta && selectedCountryMeta.iso2 === 'US') || /united states/i.test(country || '')) && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <button type="button" onClick={() => setAreaType('city')} className={`px-3 py-1 rounded-xl text-xs ${areaType === 'city' ? 'bg-primary text-black' : 'bg-white/5 text-gray-300'}`}>City</button>
+                      <button type="button" onClick={() => { setAreaType('state'); setCity(''); }} className={`px-3 py-1 rounded-xl text-xs ${areaType === 'state' ? 'bg-primary text-black' : 'bg-white/5 text-gray-300'}`}>State</button>
+                      <div className="text-xs text-gray-400 ml-2">Choose service area type</div>
+                    </div>
+                  )}
+
+                  {areaType === 'state' && ((selectedCountryMeta && selectedCountryMeta.iso2 === 'US') || /united states/i.test(country || '')) ? (
+                    <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white" style={{backgroundColor: '#0a0a0a', color: '#fff'}}>
+                      <option value="">Select state</option>
+                      {US_STATES.map((st) => <option key={st} value={st} style={{backgroundColor: '#0a0a0a', color: '#fff'}}>{st}</option>)}
+                    </select>
+                  ) : (
+                    // city selection (regular behavior)
+                    (citiesForCountry && citiesForCountry.length > 0) ? (
+                      <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white" style={{backgroundColor: '#0a0a0a', color: '#fff'}}>
+                        <option value="">Select city</option>
+                        {citiesForCountry.map((ct) => <option key={ct} value={ct} style={{backgroundColor: '#0a0a0a', color: '#fff'}}>{ct}</option>)}
+                      </select>
+                    ) : (
+                      <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white" style={{backgroundColor: '#0a0a0a', color: '#fff'}} />
+                    )
+                  )}
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium mb-2 block uppercase tracking-wider">Contact Email</label>
+                  <input value={providerEmail} onChange={(e) => setProviderEmail(e.target.value)} placeholder="your@email.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium mb-2 block uppercase tracking-wider">Contact Number</label>
+                  <div className="flex">
+                    <div className="flex items-center gap-2 px-3 bg-white/5 border border-white/10 rounded-l-xl text-sm">
+                      <span>{selectedCountryMeta?.flag}</span>
+                      <span className="text-xs text-gray-300">{selectedCountryMeta?.dialCode || ''}</span>
+                    </div>
+                    <input value={providerPhone} onChange={(e) => setProviderPhone(e.target.value)} placeholder="50 123 4567" className="flex-1 bg-white/5 border border-white/10 rounded-r-xl px-4 py-3 text-sm" />
+                  </div>
                 </div>
               </div>
 

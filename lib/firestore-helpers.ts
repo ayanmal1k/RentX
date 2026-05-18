@@ -53,6 +53,7 @@ export interface ServiceListing {
   id?: string;
   providerId: string;
   providerName: string;
+  providerContact?: { email: string; phone?: string };
   providerAvatar?: string;
   title: string;
   description: string;
@@ -63,6 +64,11 @@ export interface ServiceListing {
   // Location
   country: string;
   city: string;
+  // serviceArea can represent whether the provider serves a whole state or a specific city
+  serviceArea?: {
+    type: 'city' | 'state';
+    value: string;
+  };
   isRemote: boolean;
   // Media
   portfolio: string[]; // URLs
@@ -111,6 +117,10 @@ export interface Booking {
   isReviewed?: boolean;
   // Contact (revealed after booking)
   providerContact?: {
+    email: string;
+    phone?: string;
+  };
+  clientContact?: {
     email: string;
     phone?: string;
   };

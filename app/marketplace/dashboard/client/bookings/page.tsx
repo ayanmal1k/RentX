@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { getClientBookings, releasePayment, Booking, getBookingReview, Review } from '@/lib/firestore-helpers';
 import {
   ShoppingBag, Clock, CheckCircle, XCircle, AlertCircle, ChevronRight,
-  LayoutDashboard, Heart, UserCircle, Menu, LogOut, MessageSquare,
+  LayoutDashboard, Heart, UserCircle, Menu, LogOut,
   Calendar, ShieldCheck, Star, ExternalLink, History, Compass
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -272,7 +272,15 @@ export default function ClientBookingsPage() {
                             <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Review Locked</span>
                           </div>
                         )}
-                        <button className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/5 transition-all"><MessageSquare className="w-4 h-4" /></button>
+                        {/* Contact buttons (email / phone) */}
+                        <div className="flex items-center gap-2">
+                          {b.providerContact?.email && (
+                            <a href={`mailto:${b.providerContact.email}`} className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/5 transition-all text-xs font-bold">Email</a>
+                          )}
+                          {b.providerContact?.phone && (
+                            <a href={`tel:${b.providerContact.phone}`} className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/5 transition-all text-xs font-bold">Call</a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
