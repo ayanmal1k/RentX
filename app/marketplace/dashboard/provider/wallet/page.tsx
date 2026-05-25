@@ -263,7 +263,7 @@ export default function ProviderWalletPage() {
             )}
             <div className="hidden sm:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Solana Mainnet-beta</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Solana Mainnet</span>
             </div>
           </div>
         </header>

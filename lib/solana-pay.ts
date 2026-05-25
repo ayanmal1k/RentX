@@ -10,18 +10,13 @@ import {
   createTransferCheckedInstruction,
   getMint
 } from '@solana/spl-token';
-import { SOLANA_NETWORK, SOLANA_TOKEN_MINT, TREASURY_WALLET_ADDRESS } from './solana-config';
-
-const RPC_URL = SOLANA_NETWORK === 'mainnet-beta' 
-  ? 'https://api.mainnet-beta.solana.com' 
-  : 'https://api.devnet.solana.com';
-
-export const connection = new Connection(RPC_URL, 'confirmed');
+import { SOLANA_TOKEN_MINT, TREASURY_WALLET_ADDRESS, createSolanaConnection } from './solana-config';
 
 export async function createRentxTransferTransaction(
   senderPublicKey: PublicKey,
   amount: number
 ): Promise<Transaction> {
+  const connection = await createSolanaConnection('confirmed');
   const mintPublicKey = new PublicKey(SOLANA_TOKEN_MINT);
   const treasuryPublicKey = new PublicKey(TREASURY_WALLET_ADDRESS);
 
@@ -59,6 +54,7 @@ export async function createSolTransferTransaction(
   senderPublicKey: PublicKey,
   amount: number
 ): Promise<Transaction> {
+  const connection = await createSolanaConnection('confirmed');
   const treasuryPublicKey = new PublicKey(TREASURY_WALLET_ADDRESS);
   const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
 

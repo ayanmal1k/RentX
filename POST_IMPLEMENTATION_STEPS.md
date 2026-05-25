@@ -98,8 +98,13 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # Solana Configuration
 NEXT_PUBLIC_SOLANA_NETWORK=mainnet-beta
+NEXT_PUBLIC_SOLANA_RPC_URL=
 NEXT_PUBLIC_TREASURY_WALLET_ADDRESS=your_admin_treasury_wallet_address
 NEXT_PUBLIC_SOLANA_TOKEN_MINT=your_rentx_token_mint_address
+
+# Optional RPC fallbacks used by the app if the primary endpoint is unavailable
+# 
+# https://api.mainnet-beta.solana.com
 ```
 
 ## 3. Administrative Setup

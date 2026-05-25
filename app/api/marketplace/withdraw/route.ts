@@ -6,14 +6,13 @@ import {
   getAssociatedTokenAddress,
 } from '@solana/spl-token';
 import {
-  clusterApiUrl,
   Connection,
   Keypair,
   PublicKey,
   sendAndConfirmTransaction,
   Transaction,
 } from '@solana/web3.js';
-import { SOLANA_NETWORK, SOLANA_TOKEN_MINT, TREASURY_WALLET_ADDRESS } from '@/lib/solana-config';
+import { SOLANA_TOKEN_MINT, TREASURY_WALLET_ADDRESS, createSolanaConnection } from '@/lib/solana-config';
 
 const SOLANA_TOKEN_DECIMALS = 9;
 
@@ -80,7 +79,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const connection = new Connection(clusterApiUrl(SOLANA_NETWORK), 'confirmed');
+    const connection = await createSolanaConnection('confirmed');
 
     const treasuryTokenAccount = await getAssociatedTokenAddress(tokenMint, treasuryPublicKey);
     const recipientTokenAccount = await getAssociatedTokenAddress(tokenMint, recipientPublicKey);

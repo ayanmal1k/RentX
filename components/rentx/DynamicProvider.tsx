@@ -5,7 +5,7 @@ import {
 } from "@dynamic-labs/sdk-react-core";
 import { SolanaWalletConnectors } from "@dynamic-labs/solana";
 import { ReactNode } from "react";
-import { DYNAMIC_SOLANA_ENVIRONMENT_ID, SOLANA_NETWORK } from "@/lib/solana-config";
+import { DYNAMIC_SOLANA_ENVIRONMENT_ID, SOLANA_NETWORK, SOLANA_RPC_URLS } from "@/lib/solana-config";
 
 const SOLANA_DEVNET_NETWORK = {
   blockExplorerUrls: ['https://explorer.solana.com/?cluster=devnet'],
@@ -24,7 +24,7 @@ const SOLANA_DEVNET_NETWORK = {
     symbol: 'SOL',
   },
   networkId: '103',
-  rpcUrls: ['https://api.devnet.solana.com'],
+  rpcUrls: SOLANA_RPC_URLS,
 };
 
 const SOLANA_MAINNET_NETWORK = {
@@ -44,7 +44,7 @@ const SOLANA_MAINNET_NETWORK = {
     symbol: 'SOL',
   },
   networkId: '101',
-  rpcUrls: ['https://api.mainnet-beta.solana.com'],
+  rpcUrls: SOLANA_RPC_URLS,
 };
 
 export function DynamicProvider({ children }: { children: ReactNode }) {
