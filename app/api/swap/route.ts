@@ -3,6 +3,7 @@ import bs58 from 'bs58';
 import {
   createAssociatedTokenAccountIdempotentInstruction,
   createTransferCheckedInstruction,
+  getMint,
   getAssociatedTokenAddress,
 } from '@solana/spl-token';
 import {
@@ -14,8 +15,6 @@ import {
 } from '@solana/web3.js';
 import { getActivePresalePriceUsd } from '@/lib/presale-config';
 import { SOLANA_TOKEN_MINT, TREASURY_WALLET_ADDRESS, createSolanaConnection } from '@/lib/solana-config';
-
-const SOLANA_TOKEN_DECIMALS = 9;
 
 function getTreasuryKeypair(): Keypair {
   const secretKey = process.env.TREASURY_PRIVATE_KEY;
@@ -108,10 +107,12 @@ export async function POST(request: NextRequest) {
     }
 
     const connection = await createSolanaConnection('confirmed');
+    const mintInfo = await getMint(connection, tokenMint);
+    const tokenDecimals = mintInfo.decimals;
 
     const treasuryTokenAccount = await getAssociatedTokenAddress(tokenMint, treasuryPublicKey);
     const recipientTokenAccount = await getAssociatedTokenAddress(tokenMint, recipientPublicKey);
-    const amountInBaseUnits = BigInt(Math.max(1, Math.round(rentxAmount * 10 ** SOLANA_TOKEN_DECIMALS)));
+    const amountInBaseUnits = BigInt(Math.max(1, Math.round(rentxAmount * 10 ** tokenDecimals)));
 
     const transaction = new Transaction().add(
       createAssociatedTokenAccountIdempotentInstruction(
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
         recipientTokenAccount,
         treasuryPublicKey,
         amountInBaseUnits,
-        SOLANA_TOKEN_DECIMALS
+        tokenDecimals
       )
     );
 
