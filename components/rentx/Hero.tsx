@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { ArrowRight, Zap, ShieldCheck, Activity } from 'lucide-react'
 
 export function Hero() {
@@ -40,13 +41,13 @@ export function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center md:justify-start mb-12">
-            <button className="group relative w-full sm:w-auto bg-primary text-on-primary px-8 lg:px-10 py-4 lg:py-5 rounded-xl font-bold text-base md:text-lg lg:text-xl transition-all duration-300 hover:-translate-y-1 active:translate-y-0 overflow-hidden shadow-[0_0_20px_rgba(152,203,255,0.2)] hover:shadow-[0_0_30px_rgba(152,203,255,0.4)]">
+            <Link href="/marketplace" className="group relative w-full sm:w-auto bg-primary text-on-primary px-8 lg:px-10 py-4 lg:py-5 rounded-xl font-bold text-base md:text-lg lg:text-xl transition-all duration-300 hover:-translate-y-1 active:translate-y-0 overflow-hidden shadow-[0_0_20px_rgba(152,203,255,0.2)] hover:shadow-[0_0_30px_rgba(152,203,255,0.4)] text-center block">
               <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300" />
               <span className="relative z-10 flex items-center justify-center gap-2">Explore Marketplace <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></span>
-            </button>
-            <button className="w-full sm:w-auto border border-outline-variant bg-surface/40 hover:bg-surface-variant hover:border-primary/50 text-on-surface px-8 lg:px-10 py-4 lg:py-5 rounded-xl font-bold text-base md:text-lg lg:text-xl transition-all duration-300 hover:-translate-y-1 active:translate-y-0 backdrop-blur-md">
+            </Link>
+            <Link href="/buyrentx" className="w-full sm:w-auto border border-outline-variant bg-surface/40 hover:bg-surface-variant hover:border-primary/50 text-on-surface px-8 lg:px-10 py-4 lg:py-5 rounded-xl font-bold text-base md:text-lg lg:text-xl transition-all duration-300 hover:-translate-y-1 active:translate-y-0 backdrop-blur-md text-center block">
               Buy RENTX
-            </button>
+            </Link>
           </div>
 
           {/* Mini Stats under buttons */}

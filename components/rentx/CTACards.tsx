@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { ShoppingCart, Wrench, ArrowRight, CheckCircle2, Globe, Zap, Shield } from 'lucide-react'
 
 export function CTACards() {
@@ -66,10 +67,10 @@ export function CTACards() {
                 </div>
               </div>
 
-              <button className="bg-primary text-on-primary px-8 py-4 rounded-2xl font-bold text-lg hover:scale-[1.03] active:scale-95 transition-all duration-200 glow-blue flex items-center gap-3 group/btn">
+              <Link href="/marketplace" className="bg-primary text-on-primary px-8 py-4 rounded-2xl font-bold text-lg hover:scale-[1.03] active:scale-95 transition-all duration-200 glow-blue flex items-center gap-3 group/btn w-fit">
                 Browse Services
                 <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform duration-200" />
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -115,10 +116,10 @@ export function CTACards() {
                 </div>
               </div>
 
-              <button className="bg-secondary text-on-secondary px-8 py-4 rounded-2xl font-bold text-lg hover:scale-[1.03] active:scale-95 transition-all duration-200 glow-gold flex items-center gap-3 group/btn">
+              <Link href="/marketplace/auth?tab=register" className="bg-secondary text-on-secondary px-8 py-4 rounded-2xl font-bold text-lg hover:scale-[1.03] active:scale-95 transition-all duration-200 glow-gold flex items-center gap-3 group/btn w-fit">
                 Register as Provider
                 <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform duration-200" />
-              </button>
+              </Link>
             </div>
           </div>
         </div>

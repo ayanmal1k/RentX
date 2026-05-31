@@ -15,7 +15,6 @@ export const SOLANA_NETWORK: SolanaNetwork = requestedNetwork === 'mainnet'
 
 const MAINNET_RPC_URLS = [
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
-  'https://solana-mainnet.core.chainstack.com/d2f8be617491480c8e764743fa913090',
   'https://mainnet.helius-rpc.com/?api-key=dbbc3090-2630-4663-8809-04ee40c700cc',
   'https://api.mainnet-beta.solana.com',
 ].filter((url): url is string => Boolean(url));
